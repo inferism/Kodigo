@@ -23,25 +23,29 @@ Vercel only serves the static files. It never sees user code.
 
 ## Runner contract
 
-The UI talks to every language through this shape. It's a draft, and the Phase 0 spike may change it.
+The UI talks to every language through this shape. The Java runner is in `src/runners/java.js`.
 
 ```ts
 interface Runner {
   id: string;                  // "java"
   label: string;               // "Java"
 
-  // Download what the runner needs. Runs once, and reports progress.
-  load(onProgress: (percent: number) => void): Promise<void>;
+  // Download what the runner needs, and resolve when it can run code. Safe to call again.
+  // Rejects if the download fails, and calling it again retries.
+  // The onProgress callback stays in use, so it also reports reloads after a stop().
+  load(onProgress?: (percent: number) => void): Promise<void>;
 
-  // Compile if needed, then run.
+  // Compile if needed, then run. One run at a time. It waits for load() if needed,
+  // and rejects if the runner fails. A compile error is a normal result, not a rejection.
   run(source: string, io: {
     onStdout: (text: string) => void;
     onStderr: (text: string) => void;
     onDiagnostic: (error: { line: number; message: string }) => void;
     readInput: () => Promise<string>;
-  }): Promise<{ exitCode: number }>;
+  }): Promise<{ exitCode: number | null; stopped: boolean }>;
 
-  // Kill the running program. Must work on an infinite loop.
+  // Kill the running program. Must work on an infinite loop. A stopped run resolves
+  // with { exitCode: null, stopped: true }. The runner restarts itself if it needs to.
   stop(): void;
 }
 ```
@@ -96,7 +100,8 @@ Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on
 
   Older guides use `esm/vs/basic-languages`, which no longer has the Java files.
 - **Size:** With Java only, Monaco adds about 2.7 MB of JS (714 kB gzipped), plus a 304 kB worker and 99 kB of CSS.
-- **CheerpJ worker:** Keep `worker.js`, `kodigo.jar` and `preload.json` in `public/`, so Vite copies them unchanged and the page starts the worker with `new Worker('/path/worker.js')`. The worker needs `importScripts`, which module workers don't have, so don't import it through Vite.
+- **CheerpJ worker:** `worker.js`, `kodigo.jar` and `preload.json` live in `public/runners/java/`, so Vite copies them unchanged and the page starts the worker with `new Worker('/runners/java/worker.js')`. The worker needs `importScripts`, which module workers don't have, so don't import it through Vite.
+- **Testing the runner:** Run `npm run dev` and open `/test/runner.html`. That page exists only on the dev server.
 - **DOMPurify warning:** `npm audit` reports a critical issue in Monaco 0.57.0's DOMPurify 3.4.15, and Monaco has its own built-in copy, so an npm override wouldn't change it. The listed issues depend on `IN_PLACE`, `SAFE_FOR_TEMPLATES` or `PARSER_MEDIA_TYPE`, and a search of Monaco's sanitizer found none of them. Don't run `npm audit fix --force`: it installs Monaco 0.56.0, which has an older DOMPurify. Update when a Monaco release includes 3.4.17 or later, and don't pass untrusted Markdown to Monaco until then.
 
 ## CheerpJ license
@@ -113,7 +118,7 @@ Selling or charging for the software is commercial use, though a one-person comp
 
 ## Phase 0 findings
 
-Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`. The owner then confirmed `Scanner`, Stop and compile errors by hand on a Vercel preview deployment, with no `vercel.json` or special headers. The code is in `spike/`. CheerpJ's docs don't cover `javac`, stdin, stdout capture or stopping a program, so these are test results rather than documented behavior, and a CheerpJ update could change them. Pin the loader version.
+Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`. The owner then confirmed `Scanner`, Stop and compile errors by hand on a Vercel preview deployment, with no `vercel.json` or special headers. The spike's code became the Java runner, and the rest of `spike/` was removed, so see the git history for the original. CheerpJ's docs don't cover `javac`, stdin, stdout capture or stopping a program, so these are test results rather than documented behavior, and a CheerpJ update could change them. Pin the loader version.
 
 **What works:**
 
@@ -131,7 +136,8 @@ Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`.
 - **CheerpJ must run in a Web Worker.** On the page's thread, or in an iframe, a silent loop freezes the page. A loop that prints stays responsive, which can hide this bug.
 - **Workers have no `#console` element,** so output doesn't reach the page by default.
 - **`KodigoRun.java` is a small Java wrapper that solves this.** It runs `javac` through `javax.tools`, replaces `System.in`, `out` and `err`, then starts the user's `Main`. Its native methods are written in JavaScript through the `natives` option of `cheerpjInit`.
-- **The draft runner contract still fits,** with `stop()` replacing the worker. `load()` has to run again after a stop, so the UI should treat that as a short reload.
+- **`stop()` replaces the worker,** and the runner loads Java again on its own. The UI should treat that as a short reload.
+- **Real load progress comes from `preloadProgress`.** With the default `status`, `cheerpjInit` finishes before the preload does, so `worker.js` waits for 100% before it reports ready. Adding `status: 'none'` makes `cheerpjInit` hang after 100%. The docs mention neither, so these are test results.
 
 **Timings across 4 rounds of Hello World on the Worker version:**
 
@@ -165,6 +171,8 @@ Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`.
 - **Slow first runs:** In the runs that were logged, the delay came from slow downloads of `21/lib/modules` from the CDN, while the page stayed responsive. Runs past 90s still happen, and the ones in the speed test weren't logged, so their cause is unconfirmed. Phase 1 needs a clear loading state.
 - **Background tabs:** Runs in a hidden Browser pane took minutes or never finished, so don't trust timing from a hidden tab.
 - **Stack traces:** They show `Unknown Source` instead of line numbers, even with `-g`.
+- **Stalled downloads:** `load()` has no timeout, so a download that stalls without failing leaves the percent stuck. A failed download does reject.
+- **Warm-up after ready:** Warm-up can still be running when `load()` resolves, so an early Run can wait on it. How long this takes hasn't been measured in a visible tab.
 - **Class names:** The wrapper assumes the class is called `Main`, and a user class called `KodigoRun` would clash with it.
 - **Other browsers:** Firefox, Safari and phones weren't tested.
 

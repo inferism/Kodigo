@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Java runner test</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0 auto; max-width: 48rem; padding: 1rem; background: #14161a; color: #e6e6e6; font: 16px system-ui, sans-serif; }
+    textarea, pre, input { box-sizing: border-box; width: 100%; padding: .5rem; background: #1c1f24; color: inherit; font: 14px monospace; }
+    textarea { height: 14rem; }
+    pre { min-height: 6rem; white-space: pre-wrap; }
+    .stderr { color: #ff8f8f; }
+  </style>
+</head>
+<body>
+  <!-- Dev server only, at /test/runner.html. It tests the runner until the real UI exists. -->
+  <textarea id="source" aria-label="Java source">public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello from the Java runner");
+    }
+}</textarea>
+  <p><button id="run">Run</button> <button id="stop">Stop</button> <span id="status" role="status">Loading</span></p>
+  <input id="stdin" disabled aria-label="Program input">
+  <pre id="output"></pre>
+  <pre id="diagnostics"></pre>
+
+  <script type="module">
+    import { javaRunner } from '/src/runners/java.js';
+
+    const $ = (id) => document.getElementById(id);
+    const status = (text) => { $('status').textContent = text; };
+    const print = (text, className) => {
+      const span = document.createElement('span');
+      span.className = className;
+      span.textContent = text;
+      $('output').append(span);
+    };
+
+    function readInput() {
+      $('stdin').disabled = false;
+      $('stdin').focus();
+      return new Promise((resolve) => {
+        $('stdin').onkeydown = ({ key }) => {
+          if (key !== 'Enter') return;
+          $('stdin').disabled = true;
+          resolve($('stdin').value);
+          $('stdin').value = '';
+        };
+      });
+    }
+
+    $('run').onclick = async () => {
+      $('output').textContent = '';
+      $('diagnostics').textContent = '';
+      status('Running');
+      try {
+        const result = await javaRunner.run($('source').value, {
+          onStdout: (text) => print(text, 'stdout'),
+          onStderr: (text) => print(text, 'stderr'),
+          onDiagnostic: (error) => $('diagnostics').append(JSON.stringify(error) + '\n'),
+          readInput,
+        });
+        status('Finished ' + JSON.stringify(result));
+      } catch (error) {
+        status('Failed: ' + error.message);
+      }
+    };
+
+    $('stop').onclick = () => {
+      $('stdin').disabled = true;
+      javaRunner.stop();
+    };
+
+    javaRunner.load((percent) => status(`Loading ${percent}%`))
+      .then(() => status('Ready'), (error) => status('Failed: ' + error.message));
+  </script>
+</body>
+</html>

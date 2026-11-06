@@ -32,7 +32,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Choose the build tool and UI framework, if any are needed
 - [ ] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
 - [ ] Monaco editor with Java highlighting
-- [ ] Define the runner contract and build the Java runner
+- [x] Define the runner contract and build the Java runner
 - [ ] Output panel with separate stdout and stderr
 - [ ] Run button and loading progress for the first download
 - [ ] Compile errors with clickable line numbers
