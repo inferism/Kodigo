@@ -8,6 +8,7 @@ A free online compiler with built-in guides, aimed at students. Users pick a lan
 
 - [docs/ROADMAP.md](docs/ROADMAP.md): phases, current work, and what counts as done
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the app fits together, the runner contract, and decisions made
+- [docs/WORKFLOW.md](docs/WORKFLOW.md): the steps for each task, and when Codex reviews
 - [AGENTS.md](AGENTS.md): instructions for Codex, which shares these rules
 
 ## Hard constraints
