@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Kodigo: a free online compiler with built-in guides</title>
+  <meta name="description" content="Write code, run it in your browser, and learn as you go. Free, with nothing to install.">
+  <link rel="stylesheet" href="/src/home.css">
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Kodigo</h1>
+        <p class="lead">A free online compiler with built-in guides. Write code, run it in your browser, and learn as you go. Nothing to install.</p>
+        <a class="skip" href="#languages">
+          Choose a language
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg>
+        </a>
+      </div>
+      <figure class="sample" aria-label="Example of a guide button">
+<pre><code><span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; 10; i++) {
+    System.out.println(i);
+}</code></pre>
+        <figcaption>Click a guide button to insert code like this, then open it to see what it does.</figcaption>
+      </figure>
+    </section>
+
+    <section id="languages" class="languages">
+      <h2>Pick a language</h2>
+      <ul id="language-list" class="language-list"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built with <a href="https://cheerpj.com" rel="noopener">CheerpJ</a>. Your code runs in your browser and is never sent to a server.</p>
+  </footer>
+
+  <script type="module" src="/src/home.js"></script>
+</body>
+</html>

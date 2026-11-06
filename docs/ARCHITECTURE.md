@@ -18,8 +18,9 @@ Vercel only serves the static files. It never sees user code.
 
 ## Pages
 
-- **Home:** The title and short description, with the available languages below when you scroll. Java is the only one for now.
-- **Compiler:** The editor, output panel and guide buttons for the chosen language.
+- **Home** (`index.html`): The title and short description, with the available languages below when you scroll. The languages come from the list in `src/languages.js`, one `{ id, label, blurb, href }` entry each, so adding a language doesn't change the page's code. Java is the only one for now.
+- **Compiler** (`compiler/index.html`, not built yet): The editor, output panel and guide buttons for the chosen language. The home page links to `/compiler/?lang=java`, where `lang` is the runner's `id`.
+- **CheerpJ credit:** CheerpJ's license needs a visible "Built with CheerpJ" credit. It's in the home page footer, and the compiler page needs the same line.
 
 ## Runner contract
 
@@ -90,7 +91,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 
 Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on a production build. Pin both versions.
 
-- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. This part wasn't tested.
+- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. Tested on 2026-11-07 with the home page and a throwaway `compiler/index.html` that imported Monaco with Java. The build made a separate JS and CSS bundle for each page, and the compiler page came out at `dist/compiler/index.html`. The home page's HTML and the three files it loads (about 1.3 kB of JS and 2.8 kB of CSS, plus a small shared polyfill) don't mention Monaco, and the browser's network log showed no Monaco request. `vite.config.js` lists only the home page for now, because a listed page that doesn't exist fails the build. The compiler page adds `compiler: 'compiler/index.html'` to `input` when it's created.
 - **Monaco imports:** Load only what a language needs. Importing `monaco-editor` itself pulls in every language.
 
   ```js
