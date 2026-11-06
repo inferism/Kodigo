@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kodigo spike</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0 auto; max-width: 56rem; padding: 1rem; background: #14161a; color: #e6e6e6; font: 16px system-ui, sans-serif; }
+    textarea, pre { box-sizing: border-box; width: 100%; padding: .75rem; border: 1px solid #333; border-radius: 6px; background: #1c1f24; color: inherit; font: 14px/1.5 ui-monospace, Consolas, monospace; }
+    textarea { height: 16rem; }
+    pre { min-height: 8rem; white-space: pre-wrap; }
+    button { padding: .5rem 1rem; border: 1px solid #5b9dff; border-radius: 6px; background: #2563eb; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+    #stop { border-color: #ff8f8f; background: #b91c1c; }
+    button:disabled, #stop:disabled { border-color: #444; background: #2a2d33; color: #a0a4ab; cursor: not-allowed; }
+    input { box-sizing: border-box; width: 100%; padding: .5rem .75rem; border: 1px solid #333; border-radius: 6px; background: #1c1f24; color: inherit; font: 14px ui-monospace, Consolas, monospace; }
+    .stderr { color: #ff8f8f; }
+  </style>
+</head>
+<body>
+  <h1>Kodigo spike</h1>
+  <textarea id="source" spellcheck="false" aria-label="Java source">public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello from javac in the browser");
+    }
+}</textarea>
+  <p><button id="run" disabled>Run</button> <button id="stop" disabled>Stop</button> <span id="status" role="status">Loading CheerpJ…</span></p>
+  <pre id="console"></pre>
+  <p><input id="stdin" disabled placeholder="Input for your program, press Enter to send" aria-label="Program input"></p>
+  <p>Built with CheerpJ</p>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    let runner;
+
+    function print(text, className) {
+      const span = document.createElement('span');
+      span.className = className ?? '';
+      span.textContent = text;
+      $('console').append(span);
+    }
+
+    function askForLine() {
+      $('stdin').disabled = false;
+      $('stdin').focus();
+      $('status').textContent = 'Waiting for input…';
+    }
+
+    function sendLine(event) {
+      if (event.key !== 'Enter' || $('stdin').disabled) return;
+      const line = $('stdin').value;
+      $('stdin').value = '';
+      $('stdin').disabled = true;
+      $('status').textContent = 'Running…';
+      print(line + '\n', 'stdin');
+      runner.postMessage({ type: 'input', line });
+    }
+
+    const handlers = {
+      print: ({ text, className }) => print(text, className),
+      readLine: askForLine,
+      status: ({ text }) => { $('status').textContent = text; },
+      ready: ({ ms }) => {
+        $('status').textContent = `Ready, init ${ms} ms`;
+        $('run').disabled = false;
+        window.spikeRun = run;
+      },
+      done: ({ result }) => {
+        $('status').textContent = JSON.stringify(result);
+        $('run').disabled = false;
+        $('stop').disabled = true;
+      },
+    };
+
+    function startRunner() {
+      $('run').disabled = true;
+      $('stop').disabled = true;
+      $('stdin').disabled = true;
+      $('status').textContent = 'Loading CheerpJ…';
+      runner = new Worker('worker.js');
+      runner.onmessage = ({ data }) => handlers[data.type](data);
+      runner.onerror = (event) => print(event.message + '\n', 'stderr');
+    }
+
+    function run() {
+      $('run').disabled = true;
+      $('stop').disabled = false;
+      $('console').textContent = '';
+      $('status').textContent = 'Starting…';
+      runner.postMessage({ type: 'run', source: $('source').value });
+    }
+
+    function stop() {
+      runner.terminate();
+      print('\nStopped.\n', 'stderr');
+      startRunner();
+    }
+
+    $('run').onclick = run;
+    $('stop').onclick = stop;
+    $('stdin').onkeydown = sendLine;
+    startRunner();
+  </script>
+</body>
+</html>

@@ -10,14 +10,14 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 **Model:** Opus 5.5 for all of this phase. It's full of unknowns.
 
-- [ ] Read CheerpJ's current license and docs, and record the findings in [ARCHITECTURE.md](ARCHITECTURE.md)
-- [ ] One HTML page compiles and runs Hello World with real `javac`
-- [ ] Output and compile errors reach the page
-- [ ] A program using `Scanner` can read input
-- [ ] An infinite loop can be stopped without freezing the tab
-- [ ] Measure the first load and the compile time
-- [ ] Confirm that modern syntax works, such as records and switch expressions
-- [ ] Confirm that it works from a Vercel deployment, not only on localhost
+- [x] Read CheerpJ's current license and docs, and record the findings in [ARCHITECTURE.md](ARCHITECTURE.md)
+- [x] One HTML page compiles and runs Hello World with real `javac`
+- [x] Output and compile errors reach the page
+- [x] A program using `Scanner` can read input
+- [x] An infinite loop can be stopped without freezing the tab
+- [x] Measure the first load and the compile time
+- [x] Confirm that modern syntax works, such as records and switch expressions
+- [x] Confirm that it works from a Vercel deployment, not only on localhost
 
 **Pass:** Hello World, compile errors and `Scanner` all work under a free license, with an acceptable load time.
 
