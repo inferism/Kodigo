@@ -33,7 +33,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
 - [x] Monaco editor with Java highlighting
 - [x] Define the runner contract and build the Java runner
-- [ ] Output panel with separate stdout and stderr
+- [x] Output panel with separate stdout and stderr
 - [ ] Run button and loading progress for the first download
 - [ ] Compile errors with clickable line numbers
 - [ ] Deploy to Vercel from the private repo
