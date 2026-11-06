@@ -14,7 +14,6 @@
     input { box-sizing: border-box; width: 100%; padding: .5rem .75rem; border: 1px solid #333; border-radius: 6px; background: #1c1f24; color: inherit; font: 14px ui-monospace, Consolas, monospace; }
     .stderr { color: #ff8f8f; }
   </style>
-  <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
 </head>
 <body>
   <h1>Kodigo spike</h1>
@@ -23,15 +22,14 @@
         System.out.println("Hello from javac in the browser");
     }
 }</textarea>
-  <p><button id="run" disabled>Run</button> <span id="status" role="status">Loading CheerpJ…</span></p>
-  <!-- CheerpJ writes System.out to an element with this id. -->
+  <p><button id="run" disabled>Run</button> <button id="stop" disabled>Stop</button> <span id="status" role="status">Loading CheerpJ…</span></p>
   <pre id="console"></pre>
   <p><input id="stdin" disabled placeholder="Input for your program, press Enter to send" aria-label="Program input"></p>
   <p>Built with CheerpJ</p>
 
   <script type="module">
-    const JAVA_VERSION = Number(new URLSearchParams(location.search).get('java') ?? 21);
     const $ = (id) => document.getElementById(id);
+    let runner;
 
     function print(text, className) {
       const span = document.createElement('span');
@@ -58,42 +56,51 @@
       });
     }
 
-    async function run() {
+    function startRunner() {
       $('run').disabled = true;
-      $('console').textContent = '';
-      cheerpOSAddStringFile('/str/Main.java', $('source').value);
-      cheerpOSAddStringFile('/str/KodigoRun.java', wrapper);
-
-      $('status').textContent = 'Compiling…';
-      const t0 = performance.now();
-      const compiled = await cheerpjRunMain('com.sun.tools.javac.Main', '/files/', '/str/Main.java', '/str/KodigoRun.java', '-d', '/files/');
-      const t1 = performance.now();
-
-      let exitCode = compiled;
-      if (compiled === 0) {
-        $('status').textContent = 'Running…';
-        exitCode = await cheerpjRunMain('KodigoRun', '/files/');
-      }
-      const result = { compiled, exitCode, compileMs: Math.round(t1 - t0), runMs: Math.round(performance.now() - t1) };
-      $('status').textContent = JSON.stringify(result);
-      $('run').disabled = false;
-      return result;
+      $('stop').disabled = true;
+      $('stdin').disabled = true;
+      $('status').textContent = 'Loading CheerpJ…';
+      runner = document.createElement('iframe');
+      runner.src = 'runner.html';
+      runner.title = 'Java runner';
+      runner.hidden = true;
+      document.body.append(runner);
     }
 
-    const wrapper = await (await fetch('KodigoRun.java')).text();
-    const t0 = performance.now();
-    await cheerpjInit({
-      version: JAVA_VERSION,
-      status: 'none',
-      natives: {
-        Java_KodigoRun_readLine: async (lib) => readLine(),
-        Java_KodigoRun_write: async (lib, text, isError) => print(text, isError ? 'stderr' : 'stdout'),
+    async function run() {
+      $('run').disabled = true;
+      $('stop').disabled = false;
+      $('console').textContent = '';
+      const current = runner;
+      const result = await current.contentWindow.compileAndRun($('source').value);
+      if (current !== runner) return;
+      $('status').textContent = JSON.stringify(result);
+      $('run').disabled = false;
+      $('stop').disabled = true;
+    }
+
+    function stop() {
+      runner.remove();
+      print('\nStopped.\n', 'stderr');
+      startRunner();
+    }
+
+    // runner.html calls these from inside its iframe.
+    window.kodigo = {
+      print,
+      readLine,
+      status: (text) => { $('status').textContent = text; },
+      ready: (ms) => {
+        $('status').textContent = `Ready, init ${ms} ms`;
+        $('run').disabled = false;
+        window.spikeRun = run;
       },
-    });
-    $('status').textContent = `Ready, Java ${JAVA_VERSION}, init ${Math.round(performance.now() - t0)} ms`;
-    $('run').disabled = false;
+    };
+
     $('run').onclick = run;
-    window.spikeRun = run;
+    $('stop').onclick = stop;
+    startRunner();
   </script>
 </body>
 </html>

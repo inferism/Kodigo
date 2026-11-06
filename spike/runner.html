@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Kodigo runner</title>
+  <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+</head>
+<body>
+  <!-- CheerpJ writes javac's messages to an element with this id. -->
+  <pre id="console"></pre>
+
+  <script type="module">
+    // This page runs inside an iframe, and the host removes that iframe to kill a program.
+    const host = parent.kodigo;
+    const output = document.getElementById('console');
+    const JAVA_VERSION = Number(new URLSearchParams(parent.location.search).get('java') ?? 21);
+
+    let forwarded = 0;
+    new MutationObserver(() => {
+      host.print(output.textContent.slice(forwarded), 'stderr');
+      forwarded = output.textContent.length;
+    }).observe(output, { childList: true, characterData: true, subtree: true });
+
+    window.compileAndRun = async (source) => {
+      cheerpOSAddStringFile('/str/Main.java', source);
+      cheerpOSAddStringFile('/str/KodigoRun.java', wrapper);
+
+      host.status('Compiling…');
+      const t0 = performance.now();
+      const compiled = await cheerpjRunMain('com.sun.tools.javac.Main', '/files/', '/str/Main.java', '/str/KodigoRun.java', '-d', '/files/');
+      const t1 = performance.now();
+
+      let exitCode = compiled;
+      if (compiled === 0) {
+        host.status('Running…');
+        exitCode = await cheerpjRunMain('KodigoRun', '/files/');
+      }
+      return { compiled, exitCode, compileMs: Math.round(t1 - t0), runMs: Math.round(performance.now() - t1) };
+    };
+
+    const wrapper = await (await fetch('KodigoRun.java')).text();
+    const t0 = performance.now();
+    await cheerpjInit({
+      version: JAVA_VERSION,
+      status: 'none',
+      natives: {
+        Java_KodigoRun_readLine: async (lib) => host.readLine(),
+        Java_KodigoRun_write: async (lib, text, isError) => host.print(text, isError ? 'stderr' : 'stdout'),
+      },
+    });
+    host.ready(Math.round(performance.now() - t0));
+  </script>
+</body>
+</html>
