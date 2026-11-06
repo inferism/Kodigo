@@ -74,11 +74,22 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | One runner per language | Languages can be added one at a time without touching the UI. |
 | Monaco for the editor | It's free, it's the editor behind VS Code, and it saves building an editor. |
 
+## CheerpJ license
+
+Checked on 2026-11-06 against [cheerpj.com/licensing](https://cheerpj.com/licensing/) and [the licensing docs](https://cheerpj.com/docs/licensing), for CheerpJ 5.0. Those pages have no "last updated" date, so check them again before launch.
+
+Kodigo fits the free Community tier, which covers educational use and software published by one person. No card or account is needed, and the repo can stay private. The tier has these conditions:
+
+- **Load the runtime from the CheerpJ CDN** (`cjrtnc.leaningtech.com`). Self-hosting it, including copying it into this repo, is a paid add-on.
+- **Show a "Built with CheerpJ" credit** in the app.
+- **Expect a non-commercial licence message** on the CheerpJ display, because the free tier has no licence key.
+
+Selling or charging for the software is commercial use, though a one-person company is still covered by Community. The pages don't say whether ads or donations count, so ask Leaning Technologies before adding either.
+
 ## Open questions
 
 **To answer in Phase 0:**
 
-- Does CheerpJ's license cover Kodigo? The understanding so far is that it's free for personal, non-commercial and open-source use, and paid for commercial use. Check the current terms, including how the runtime must be loaded.
 - How well do `System.in` and `Scanner` work?
 - How can a runaway program be stopped? A discardable Web Worker or iframe are the usual options, but CheerpJ may limit which ones work.
 - Which Java version does it support?
