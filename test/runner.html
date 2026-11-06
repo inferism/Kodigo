@@ -6,9 +6,10 @@
   <style>
     :root { color-scheme: dark; }
     body { margin: 0 auto; max-width: 48rem; padding: 1rem; background: #14161a; color: #e6e6e6; font: 16px system-ui, sans-serif; }
-    textarea, pre, input { box-sizing: border-box; width: 100%; padding: .5rem; background: #1c1f24; color: inherit; font: 14px monospace; }
+    textarea, pre { box-sizing: border-box; width: 100%; padding: .5rem; background: #1c1f24; color: inherit; font: 14px monospace; }
     textarea { height: 14rem; }
     pre { min-height: 6rem; white-space: pre-wrap; }
+    #stdin { width: 50%; padding: 0; border: 0; outline: 0; background: none; color: inherit; font: inherit; }
     .stderr { color: #ff8f8f; }
   </style>
 </head>
@@ -20,8 +21,7 @@
     }
 }</textarea>
   <p><button id="run">Run</button> <button id="stop">Stop</button> <span id="status" role="status">Loading</span></p>
-  <input id="stdin" disabled aria-label="Program input">
-  <pre id="output"></pre>
+  <pre id="output"><input id="stdin" aria-label="Program input" autocomplete="off" spellcheck="false"></pre>
   <pre id="diagnostics"></pre>
 
   <script type="module">
@@ -33,25 +33,40 @@
       const span = document.createElement('span');
       span.className = className;
       span.textContent = text;
-      $('output').append(span);
+      $('stdin').before(span);
     };
 
-    function readInput() {
-      $('stdin').disabled = false;
-      $('stdin').focus();
-      return new Promise((resolve) => {
-        $('stdin').onkeydown = ({ key }) => {
-          if (key !== 'Enter') return;
-          $('stdin').disabled = true;
-          resolve($('stdin').value);
-          $('stdin').value = '';
-        };
-      });
+    // Like a real console: lines typed before the program asks wait for it.
+    let typedLines = [];
+    let giveLine = null;
+
+    function clearInput() {
+      typedLines = [];
+      giveLine = null;
+      $('stdin').value = '';
     }
 
+    const readInput = () => (typedLines.length
+      ? Promise.resolve(typedLines.shift())
+      : new Promise((resolve) => { giveLine = resolve; }));
+
+    $('stdin').onkeydown = ({ key }) => {
+      if (key !== 'Enter') return;
+      const line = $('stdin').value;
+      $('stdin').value = '';
+      print(line + '\n', 'stdout');
+      if (giveLine) giveLine(line);
+      else typedLines.push(line);
+      giveLine = null;
+    };
+
+    $('output').onclick = () => $('stdin').focus();
+
     $('run').onclick = async () => {
-      $('output').textContent = '';
+      $('output').replaceChildren($('stdin'));
       $('diagnostics').textContent = '';
+      clearInput();
+      $('stdin').focus();
       status('Running');
       try {
         const result = await javaRunner.run($('source').value, {
@@ -67,7 +82,7 @@
     };
 
     $('stop').onclick = () => {
-      $('stdin').disabled = true;
+      clearInput();
       javaRunner.stop();
     };
 

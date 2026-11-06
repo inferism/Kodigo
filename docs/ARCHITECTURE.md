@@ -80,6 +80,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Guide buttons are data | New buttons and languages need no UI changes. |
 | One runner per language | Languages can be added one at a time without touching the UI. |
 | Monaco for the editor | It's free, it's the editor behind VS Code, and it saves building an editor. |
+| Input is typed in the output panel | The owner wants it to work like a real Java console, not a separate box. Lines typed early wait until the program asks, and `test/runner.html` shows how. |
 | Vite as the build tool | Monaco from npm needs a bundler for its editor worker. Vite does this with one import, is MIT licensed, needs no account, and Vercel detects it with no settings. Tested with Monaco and the CheerpJ worker together. |
 | No UI framework, plain JS | The UI is a few panels that one small script can drive, and the runner contract is already plain callbacks. A framework would be more for the owner to learn and explain, with nothing to gain yet. Reconsider it if the Phase 3 guide panel gets hard to manage. |
 
