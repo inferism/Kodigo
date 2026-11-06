@@ -1,11 +1,11 @@
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import javax.tools.ToolProvider;
 
-// Compiled next to the user's Main. Connects System.in, out and err to the page.
+// Connects javac and the user's program to the page. A worker has no #console for CheerpJ to write to.
 public class KodigoRun {
     // Both are implemented in JavaScript through cheerpjInit's natives option.
     private static native String readLine();
@@ -51,9 +51,19 @@ public class KodigoRun {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("compile")) {
+            OutputStream errors = pageStream(true);
+            System.exit(ToolProvider.getSystemJavaCompiler().run(null, errors, errors, "-g", "/str/Main.java", "-d", "/files/"));
+        }
         System.setIn(new PageInput());
         System.setOut(new PrintStream(pageStream(false), true, "UTF-8"));
         System.setErr(new PrintStream(pageStream(true), true, "UTF-8"));
-        Main.main(args);
+        // Reflection, because this class is compiled before the user's Main exists.
+        try {
+            Class.forName("Main").getMethod("main", String[].class).invoke(null, (Object) args);
+        } catch (InvocationTargetException e) {
+            e.getCause().printStackTrace();
+            System.exit(1);
+        }
     }
 }

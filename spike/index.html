@@ -38,68 +38,65 @@
       $('console').append(span);
     }
 
-    // Java blocks on this promise until the user presses Enter.
-    function readLine() {
+    function askForLine() {
       $('stdin').disabled = false;
       $('stdin').focus();
       $('status').textContent = 'Waiting for input…';
-      return new Promise((resolve) => {
-        $('stdin').onkeydown = (event) => {
-          if (event.key !== 'Enter') return;
-          const line = $('stdin').value;
-          $('stdin').value = '';
-          $('stdin').disabled = true;
-          $('status').textContent = 'Running…';
-          print(line + '\n', 'stdin');
-          resolve(line);
-        };
-      });
     }
+
+    function sendLine(event) {
+      if (event.key !== 'Enter' || $('stdin').disabled) return;
+      const line = $('stdin').value;
+      $('stdin').value = '';
+      $('stdin').disabled = true;
+      $('status').textContent = 'Running…';
+      print(line + '\n', 'stdin');
+      runner.postMessage({ type: 'input', line });
+    }
+
+    const handlers = {
+      print: ({ text, className }) => print(text, className),
+      readLine: askForLine,
+      status: ({ text }) => { $('status').textContent = text; },
+      ready: ({ ms }) => {
+        $('status').textContent = `Ready, init ${ms} ms`;
+        $('run').disabled = false;
+        window.spikeRun = run;
+      },
+      done: ({ result }) => {
+        $('status').textContent = JSON.stringify(result);
+        $('run').disabled = false;
+        $('stop').disabled = true;
+      },
+    };
 
     function startRunner() {
       $('run').disabled = true;
       $('stop').disabled = true;
       $('stdin').disabled = true;
       $('status').textContent = 'Loading CheerpJ…';
-      runner = document.createElement('iframe');
-      runner.src = 'runner.html';
-      runner.title = 'Java runner';
-      runner.hidden = true;
-      document.body.append(runner);
+      runner = new Worker('worker.js' + location.search);
+      runner.onmessage = ({ data }) => handlers[data.type](data);
+      runner.onerror = (event) => print(event.message + '\n', 'stderr');
     }
 
-    async function run() {
+    function run() {
       $('run').disabled = true;
       $('stop').disabled = false;
       $('console').textContent = '';
-      const current = runner;
-      const result = await current.contentWindow.compileAndRun($('source').value);
-      if (current !== runner) return;
-      $('status').textContent = JSON.stringify(result);
-      $('run').disabled = false;
-      $('stop').disabled = true;
+      $('status').textContent = 'Starting…';
+      runner.postMessage({ type: 'run', source: $('source').value });
     }
 
     function stop() {
-      runner.remove();
+      runner.terminate();
       print('\nStopped.\n', 'stderr');
       startRunner();
     }
 
-    // runner.html calls these from inside its iframe.
-    window.kodigo = {
-      print,
-      readLine,
-      status: (text) => { $('status').textContent = text; },
-      ready: (ms) => {
-        $('status').textContent = `Ready, init ${ms} ms`;
-        $('run').disabled = false;
-        window.spikeRun = run;
-      },
-    };
-
     $('run').onclick = run;
     $('stop').onclick = stop;
+    $('stdin').onkeydown = sendLine;
     startRunner();
   </script>
 </body>
