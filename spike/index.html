@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kodigo spike</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0 auto; max-width: 56rem; padding: 1rem; background: #14161a; color: #e6e6e6; font: 16px system-ui, sans-serif; }
+    textarea, pre { box-sizing: border-box; width: 100%; padding: .75rem; border: 1px solid #333; border-radius: 6px; background: #1c1f24; color: inherit; font: 14px/1.5 ui-monospace, Consolas, monospace; }
+    textarea { height: 16rem; }
+    pre { min-height: 8rem; white-space: pre-wrap; }
+    button { padding: .5rem 1rem; }
+  </style>
+  <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+</head>
+<body>
+  <h1>Kodigo spike</h1>
+  <textarea id="source" spellcheck="false" aria-label="Java source">public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello from javac in the browser");
+    }
+}</textarea>
+  <p><button id="run" disabled>Run</button> <span id="status" role="status">Loading CheerpJ…</span></p>
+  <!-- CheerpJ writes System.out to an element with this id. -->
+  <pre id="console"></pre>
+  <p>Built with CheerpJ</p>
+
+  <script type="module">
+    const JAVA_VERSION = Number(new URLSearchParams(location.search).get('java') ?? 21);
+    const $ = (id) => document.getElementById(id);
+
+    async function run() {
+      $('run').disabled = true;
+      $('console').textContent = '';
+      cheerpOSAddStringFile('/str/Main.java', $('source').value);
+
+      $('status').textContent = 'Compiling…';
+      const t0 = performance.now();
+      const compiled = await cheerpjRunMain('com.sun.tools.javac.Main', '/files/', '/str/Main.java', '-d', '/files/');
+      const t1 = performance.now();
+
+      let exitCode = compiled;
+      if (compiled === 0) {
+        $('status').textContent = 'Running…';
+        exitCode = await cheerpjRunMain('Main', '/files/');
+      }
+      const result = { compiled, exitCode, compileMs: Math.round(t1 - t0), runMs: Math.round(performance.now() - t1) };
+      $('status').textContent = JSON.stringify(result);
+      $('run').disabled = false;
+      return result;
+    }
+
+    const t0 = performance.now();
+    await cheerpjInit({ version: JAVA_VERSION, status: 'none' });
+    $('status').textContent = `Ready, Java ${JAVA_VERSION}, init ${Math.round(performance.now() - t0)} ms`;
+    $('run').disabled = false;
+    $('run').onclick = run;
+    window.spikeRun = run;
+  </script>
+</body>
+</html>
