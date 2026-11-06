@@ -41,7 +41,7 @@ The owner has 10 to 20 hours a week, hits AI usage limits, and is still learning
 - **Explain every change in plain English:** what changed, why, and how the pieces connect. The owner must be able to explain the code before merging.
 - **Stay in scope.** If you spot other work, note it. Don't do it now.
 - **Save tokens.** Read only the files the task needs.
-- **Don't commit or push unless asked.** The owner decides which branch work goes on.
+- **Always commit and push finished work without being asked.** Use the current branch, and check that no secrets are included first. Never force-push, rewrite history or merge unless asked.
 - **Use regular merges, not squash merges,** so individual commits stay on the contribution graph.
 - **Update the docs** when a decision changes or a roadmap item is finished.
 
