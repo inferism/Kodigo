@@ -19,7 +19,7 @@ Vercel only serves the static files. It never sees user code.
 ## Pages
 
 - **Home** (`index.html`): The title and short description, with the available languages below when you scroll. The languages come from the list in `src/languages.js`, one `{ id, label, blurb, href }` entry each, so adding a language doesn't change the page's code. Java is the only one for now.
-- **Compiler** (`compiler/index.html`, not built yet): The editor, output panel and guide buttons for the chosen language. The home page links to `/compiler/?lang=java`, where `lang` is the runner's `id`.
+- **Compiler** (`compiler/index.html`): The editor, output panel and guide buttons for the chosen language. The home page links to `/compiler/?lang=java`, where `lang` is the runner's `id`. `src/compiler.js` reads it and falls back to the first language when it's missing or unknown. The editor and the CheerpJ credit are in. The output panel and guide buttons are not built yet.
 - **CheerpJ credit:** CheerpJ's license needs a visible "Built with CheerpJ" credit. It's in the home page footer, and the compiler page needs the same line.
 
 ## Runner contract
@@ -91,7 +91,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 
 Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on a production build. Pin both versions.
 
-- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. Tested on 2026-11-07 with the home page and a throwaway `compiler/index.html` that imported Monaco with Java. The build made a separate JS and CSS bundle for each page, and the compiler page came out at `dist/compiler/index.html`. The home page's HTML and the three files it loads (about 1.3 kB of JS and 2.8 kB of CSS, plus a small shared polyfill) don't mention Monaco, and the browser's network log showed no Monaco request. `vite.config.js` lists only the home page for now, because a listed page that doesn't exist fails the build. The compiler page adds `compiler: 'compiler/index.html'` to `input` when it's created.
+- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. Tested on 2026-11-07 with the home page and a throwaway `compiler/index.html` that imported Monaco with Java. The build made a separate JS and CSS bundle for each page, and the compiler page came out at `dist/compiler/index.html`. The home page's HTML and the three files it loads (about 1.3 kB of JS and 2.8 kB of CSS, plus a small shared polyfill) don't mention Monaco, and the browser's network log showed no Monaco request. `vite.config.js` now lists both pages, and a listed page that doesn't exist fails the build, so add a page's entry in the same change that creates it. The real compiler page (built 2026-11-07) gave the same result: the home page loads only its own files and a shared 0.9 kB `languages` chunk, with no Monaco request on the dev server or the production build.
 - **Monaco imports:** Load only what a language needs. Importing `monaco-editor` itself pulls in every language.
 
   ```js
@@ -103,7 +103,7 @@ Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on
   ```
 
   Older guides use `esm/vs/basic-languages`, which no longer has the Java files.
-- **Size:** With Java only, Monaco adds about 2.7 MB of JS (714 kB gzipped), plus a 304 kB worker and 99 kB of CSS.
+- **Size:** With Java only, Monaco adds about 2.7 MB of JS (714 kB gzipped), plus a 304 kB worker and 99 kB of CSS. The compiler page's production build matched: 2,705 kB of JS (695 kB gzipped), the 304 kB worker and 100 kB of CSS.
 - **CheerpJ worker:** `worker.js`, `kodigo.jar` and `preload.json` live in `public/runners/java/`, so Vite copies them unchanged and the page starts the worker with `new Worker('/runners/java/worker.js')`. The worker needs `importScripts`, which module workers don't have, so don't import it through Vite.
 - **Testing the runner:** Run `npm run dev` and open `/test/runner.html`. That page exists only on the dev server.
 - **DOMPurify warning:** `npm audit` reports a critical issue in Monaco 0.57.0's DOMPurify 3.4.15, and Monaco has its own built-in copy, so an npm override wouldn't change it. The listed issues depend on `IN_PLACE`, `SAFE_FOR_TEMPLATES` or `PARSER_MEDIA_TYPE`, and a search of Monaco's sanitizer found none of them. Don't run `npm audit fix --force`: it installs Monaco 0.56.0, which has an older DOMPurify. Update when a Monaco release includes 3.4.17 or later, and don't pass untrusted Markdown to Monaco until then.
