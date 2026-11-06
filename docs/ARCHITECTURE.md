@@ -67,7 +67,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Decision | Why |
 |---|---|
 | Run code in the browser | It's free, needs no server to secure, and gives abusers nothing to exploit. |
-| Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ runs it with no card. Tested on localhost. The Vercel test is still to come. |
+| Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ runs it with no card. Tested on localhost and on a Vercel preview deployment. |
 | Accept a 15 to 36 second first run | The owner accepted this on 2026-11-06, with later runs taking about 3 seconds. |
 | Run CheerpJ in a Web Worker | It's the only tested way to stop a silent infinite loop without freezing the page. |
 | Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. |
@@ -91,7 +91,7 @@ Selling or charging for the software is commercial use, though a one-person comp
 
 ## Phase 0 findings
 
-Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`. The code is in `spike/`. CheerpJ's docs don't cover `javac`, stdin, stdout capture or stopping a program, so these are test results rather than documented behavior, and a CheerpJ update could change them. Pin the loader version.
+Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`. The owner then confirmed `Scanner`, Stop and compile errors by hand on a Vercel preview deployment, with no `vercel.json` or special headers. The code is in `spike/`. CheerpJ's docs don't cover `javac`, stdin, stdout capture or stopping a program, so these are test results rather than documented behavior, and a CheerpJ update could change them. Pin the loader version.
 
 **What works:**
 
@@ -150,7 +150,6 @@ Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`.
 
 **To answer in Phase 0:**
 
-- Does it work from a Vercel deployment? The owner is testing this. See [Phase 0 findings](#phase-0-findings).
 - How large is the first download? It wasn't measured in bytes.
 
 **To decide later:**

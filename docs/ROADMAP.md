@@ -17,7 +17,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] An infinite loop can be stopped without freezing the tab
 - [x] Measure the first load and the compile time
 - [x] Confirm that modern syntax works, such as records and switch expressions
-- [ ] Confirm that it works from a Vercel deployment, not only on localhost (the owner deploys this)
+- [x] Confirm that it works from a Vercel deployment, not only on localhost
 
 **Pass:** Hello World, compile errors and `Scanner` all work under a free license, with an acceptable load time.
 
