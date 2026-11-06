@@ -2,7 +2,7 @@
 
 A free online compiler with built-in guides, aimed at students. Users pick a language and build what they want with guide buttons: each button inserts a code snippet, such as a `for` loop, and has a dropdown arrow that explains it. Java comes first, then more languages one at a time. The name is Filipino for "code" and also "cheat sheet".
 
-**Status:** Pre-code. The next step is the Phase 0 spike in [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** The Phase 0 spike works on localhost, on the `spike/cheerpj` branch. The owner still needs to test it on Vercel. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Read when relevant
 

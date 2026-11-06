@@ -67,7 +67,9 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Decision | Why |
 |---|---|
 | Run code in the browser | It's free, needs no server to secure, and gives abusers nothing to exploit. |
-| Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ looks like the best card-free way to run it. Unverified until Phase 0 passes. |
+| Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ runs it with no card. Tested on localhost. The Vercel test is still to come. |
+| Run CheerpJ in a Web Worker | It's the only tested way to stop a silent infinite loop without freezing the page. |
+| Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. |
 | Vercel Hobby for hosting | It's free with no card, deploys from a private repo, and allows custom HTTP headers. Hobby is for non-commercial use, so monetizing would mean revisiting it. |
 | Private repo for now | The owner's choice. Keep this in mind for CheerpJ's license, because a private repo can't rely on any open-source terms. |
 | Guide buttons are data | New buttons and languages need no UI changes. |
@@ -86,15 +88,54 @@ Kodigo fits the free Community tier, which covers educational use and software p
 
 Selling or charging for the software is commercial use, though a one-person company is still covered by Community. The pages don't say whether ads or donations count, so ask Leaning Technologies before adding either.
 
+## Phase 0 findings
+
+Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`. The code is in `spike/`. CheerpJ's docs don't cover `javac`, stdin, stdout capture or stopping a program, so these are test results rather than documented behavior, and a CheerpJ update could change them. Pin the loader version.
+
+**What works:**
+
+- **Java version:** `cheerpjInit({ version: 21 })` runs Java 21.0.13. Java 21 has `javac` built in, so no `tools.jar` is needed.
+- **Modern syntax:** Records, switch expressions, text blocks, sealed interfaces and pattern matching all compile and run.
+- **Compile errors:** They reach the page with the correct line number.
+- **Input and output:** `Scanner` reads live input, including after a prompt with no newline. stdout and stderr arrive separately.
+- **Exit codes:** `System.exit(3)` returns 3, and an uncaught exception returns 1.
+- **Stopping:** `terminate()` on the Web Worker kills even a silent `while (true)` loop. The next run needs a new worker.
+- **HTTP headers:** None are needed. The Range request rule only applies to whoever serves the runtime, which is CheerpJ's CDN.
+- **Licence message:** It didn't appear, because it shows on the CheerpJ display and Kodigo doesn't create one.
+
+**How it fits together:**
+
+- **CheerpJ must run in a Web Worker.** On the page's thread, or in an iframe, a silent loop freezes the page. A loop that prints stays responsive, which can hide this bug.
+- **Workers have no `#console` element,** so output doesn't reach the page by default.
+- **`KodigoRun.java` is a small Java wrapper that solves this.** It runs `javac` through `javax.tools`, replaces `System.in`, `out` and `err`, then starts the user's `Main`. Its native methods are written in JavaScript through the `natives` option of `cheerpjInit`.
+- **The draft runner contract still fits,** with `stop()` replacing the worker. `load()` has to run again after a stop, so the UI should treat that as a short reload.
+
+**Timings across 4 rounds of Hello World on the Worker version:**
+
+| Step | Time |
+|---|---|
+| First page load, nothing cached | 1.9 to 6.9s |
+| First run, nothing cached | 15 to 36s, and one of the 4 passed 90s |
+| Next run on the same page | 2.8 to 2.9s |
+| First run after Stop | 7.5 to 25s |
+| Return visit: page load | 0.08s |
+| Return visit: first run | 13 to 32s |
+
+**Known problems:**
+
+- **Slow first runs:** In the runs that were logged, the delay came from slow downloads of `21/lib/modules` from the CDN, while the page stayed responsive. The run that passed 90s wasn't logged, so its cause is unconfirmed. Phase 1 needs a clear loading state. It should also test `preloadResources`, and compiling a small class in the background on page load.
+- **Background tabs:** Runs in a hidden Browser pane took minutes or never finished, so don't trust timing from a hidden tab.
+- **Stack traces:** They show `Unknown Source` instead of line numbers, even with `-g`.
+- **Class names:** The wrapper assumes the class is called `Main`, and a user class called `KodigoRun` would clash with it.
+- **Other browsers:** Firefox, Safari and phones weren't tested.
+
 ## Open questions
 
 **To answer in Phase 0:**
 
-- How well do `System.in` and `Scanner` work?
-- How can a runaway program be stopped? A discardable Web Worker or iframe are the usual options, but CheerpJ may limit which ones work.
-- Which Java version does it support?
-- How large is the first download, and how long does compiling take?
-- Does it need special HTTP headers? If so, set them in Vercel's config.
+- Does it work from a Vercel deployment? The owner is testing this. See [Phase 0 findings](#phase-0-findings).
+- Is the first run fast enough? This is the owner's call, using the timings below.
+- How large is the first download? It wasn't measured in bytes.
 
 **To decide later:**
 
