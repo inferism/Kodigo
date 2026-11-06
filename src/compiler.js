@@ -2,6 +2,7 @@ import * as monaco from 'monaco-editor/editor/editor.api';
 import 'monaco-editor/languages/definitions/java/register';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import { languages } from './languages.js';
+import { createOutput } from './output.js';
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
@@ -26,3 +27,7 @@ monaco.editor.create(document.getElementById('editor'), {
   minimap: { enabled: false },
   fontSize: 15,
 });
+
+// The Run button will send the runner's onStdout/onStderr here.
+const output = createOutput(document.getElementById('output'));
+document.getElementById('clear-output').onclick = output.clear;

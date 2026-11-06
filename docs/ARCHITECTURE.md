@@ -19,7 +19,7 @@ Vercel only serves the static files. It never sees user code.
 ## Pages
 
 - **Home** (`index.html`): The title and short description, with the available languages below when you scroll. The languages come from the list in `src/languages.js`, one `{ id, label, blurb, href }` entry each, so adding a language doesn't change the page's code. Java is the only one for now.
-- **Compiler** (`compiler/index.html`): The editor, output panel and guide buttons for the chosen language. The home page links to `/compiler/?lang=java`, where `lang` is the runner's `id`. `src/compiler.js` reads it and falls back to the first language when it's missing or unknown. The editor and the CheerpJ credit are in. The output panel and guide buttons are not built yet.
+- **Compiler** (`compiler/index.html`): The editor, output panel and guide buttons for the chosen language. The home page links to `/compiler/?lang=java`, where `lang` is the runner's `id`. `src/compiler.js` reads it and falls back to the first language when it's missing or unknown. The editor, the output panel and the CheerpJ credit are in. The guide buttons are not built yet. The editor sits on top, with the output panel under it (about 30% of the height). `src/output.js` gives the panel `stdout(text)`, `stderr(text)` and `clear()`, which match the runner contract's `onStdout` and `onStderr`. It shows both streams in one ordered stream, with stderr in red, and always as plain text. It collects output and updates the page once per 16 ms, because checking the scroll position on every write made a 30,000-line burst freeze the tab. It keeps about the last 200,000 characters, so a program that prints forever can't grow the page without limit. Revisit that cap once Stop exists.
 - **CheerpJ credit:** CheerpJ's license needs a visible "Built with CheerpJ" credit. It's in the home page footer, and the compiler page needs the same line.
 
 ## Runner contract
@@ -80,6 +80,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. |
 | Vercel Hobby for hosting | It's free with no card, deploys from a private repo, and allows custom HTTP headers. Hobby is for non-commercial use, so monetizing would mean revisiting it. |
 | Private repo for now | The owner's choice. Keep this in mind for CheerpJ's license, because a private repo can't rely on any open-source terms. |
+| Guide panel on the right of the editor | The owner's choice, so the editor keeps most of the space. On a laptop it's a fixed width of about 14 to 18rem that can collapse, not a percentage, because 10% is too narrow for labels like `System.out.print` and a dropdown arrow. On a phone it becomes a drawer at the bottom. Phase 3 builds it, and the compiler page's layout already leaves room for it. |
 | Guide buttons are data | New buttons and languages need no UI changes. |
 | One runner per language | Languages can be added one at a time without touching the UI. |
 | Monaco for the editor | It's free, it's the editor behind VS Code, and it saves building an editor. |
