@@ -35,8 +35,9 @@ interface Runner {
   // The onProgress callback stays in use, so it also reports reloads after a stop().
   load(onProgress?: (percent: number) => void): Promise<void>;
 
-  // Compile if needed, then run. One run at a time. It waits for load() if needed,
-  // and rejects if the runner fails. A compile error is a normal result, not a rejection.
+  // Compile if needed, then run. It waits for load() if needed. It rejects if a run is
+  // already active, if the runner fails, or if readInput fails. A compile error is a
+  // normal result, not a rejection.
   run(source: string, io: {
     onStdout: (text: string) => void;
     onStderr: (text: string) => void;
@@ -45,7 +46,8 @@ interface Runner {
   }): Promise<{ exitCode: number | null; stopped: boolean }>;
 
   // Kill the running program. Must work on an infinite loop. A stopped run resolves
-  // with { exitCode: null, stopped: true }. The runner restarts itself if it needs to.
+  // with { exitCode: null, stopped: true }. The runner restarts itself if it needs to,
+  // and a load() still in progress resolves when the restarted runner is ready.
   stop(): void;
 }
 ```

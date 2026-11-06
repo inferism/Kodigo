@@ -63,6 +63,7 @@
     $('output').onclick = () => $('stdin').focus();
 
     $('run').onclick = async () => {
+      $('run').disabled = true;
       $('output').replaceChildren($('stdin'));
       $('diagnostics').textContent = '';
       clearInput();
@@ -79,6 +80,7 @@
       } catch (error) {
         status('Failed: ' + error.message);
       }
+      $('run').disabled = false;
     };
 
     $('stop').onclick = () => {
