@@ -9,9 +9,9 @@ let readyWaiters = null; // { resolve, reject } while ready is pending.
 let job = null; // The run in progress: { io, resolve, reject }.
 let progress = () => {};
 
-// javac reports errors as "Main.java:3: error: ';' expected", once its path is removed.
+// javac reports errors as "Hello.java:3: error: ';' expected".
 function parseDiagnostics(output) {
-  return [...output.matchAll(/^Main\.java:(\d+): error: (.*)$/gm)]
+  return [...output.matchAll(/^.+?\.java:(\d+): error: (.*)$/gm)]
     .map(([, line, message]) => ({ line: Number(line), message }));
 }
 
@@ -41,9 +41,8 @@ const handlers = {
   print: ({ text, isError }) => (isError ? job?.io.onStderr(text) : job?.io.onStdout(text)),
   compiled: ({ output }) => {
     if (!job) return;
-    const text = output.replaceAll('/str/Main.java', 'Main.java');
-    if (text) job.io.onStderr(text);
-    parseDiagnostics(text).forEach(job.io.onDiagnostic);
+    if (output) job.io.onStderr(output);
+    parseDiagnostics(output).forEach(job.io.onDiagnostic);
   },
   readLine: async () => {
     const asking = job;
