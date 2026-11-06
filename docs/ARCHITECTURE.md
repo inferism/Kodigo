@@ -76,6 +76,28 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Guide buttons are data | New buttons and languages need no UI changes. |
 | One runner per language | Languages can be added one at a time without touching the UI. |
 | Monaco for the editor | It's free, it's the editor behind VS Code, and it saves building an editor. |
+| Vite as the build tool | Monaco from npm needs a bundler for its editor worker. Vite does this with one import, is MIT licensed, needs no account, and Vercel detects it with no settings. Tested with Monaco and the CheerpJ worker together. |
+| No UI framework, plain JS | The UI is a few panels that one small script can drive, and the runner contract is already plain callbacks. A framework would be more for the owner to learn and explain, with nothing to gain yet. Reconsider it if the Phase 3 guide panel gets hard to manage. |
+
+## Build setup
+
+Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on a production build. Pin both versions.
+
+- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. This part wasn't tested.
+- **Monaco imports:** Load only what a language needs. Importing `monaco-editor` itself pulls in every language.
+
+  ```js
+  import * as monaco from 'monaco-editor/editor/editor.api';
+  import 'monaco-editor/languages/definitions/java/register';
+  import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
+
+  self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
+  ```
+
+  Older guides use `esm/vs/basic-languages`, which no longer has the Java files.
+- **Size:** With Java only, Monaco adds about 2.7 MB of JS (714 kB gzipped), plus a 304 kB worker and 99 kB of CSS.
+- **CheerpJ worker:** Keep `worker.js`, `kodigo.jar` and `preload.json` in `public/`, so Vite copies them unchanged and the page starts the worker with `new Worker('/path/worker.js')`. The worker needs `importScripts`, which module workers don't have, so don't import it through Vite.
+- **DOMPurify warning:** `npm audit` reports a critical issue in Monaco 0.57.0's DOMPurify 3.4.15, and Monaco has its own built-in copy, so an npm override wouldn't change it. The listed issues depend on `IN_PLACE`, `SAFE_FOR_TEMPLATES` or `PARSER_MEDIA_TYPE`, and a search of Monaco's sanitizer found none of them. Don't run `npm audit fix --force`: it installs Monaco 0.56.0, which has an older DOMPurify. Update when a Monaco release includes 3.4.17 or later, and don't pass untrusted Markdown to Monaco until then.
 
 ## CheerpJ license
 
