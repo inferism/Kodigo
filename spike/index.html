@@ -11,6 +11,8 @@
     textarea { height: 16rem; }
     pre { min-height: 8rem; white-space: pre-wrap; }
     button { padding: .5rem 1rem; }
+    input { box-sizing: border-box; width: 100%; padding: .5rem .75rem; border: 1px solid #333; border-radius: 6px; background: #1c1f24; color: inherit; font: 14px ui-monospace, Consolas, monospace; }
+    .stderr { color: #ff8f8f; }
   </style>
   <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
 </head>
@@ -24,26 +26,53 @@
   <p><button id="run" disabled>Run</button> <span id="status" role="status">Loading CheerpJ…</span></p>
   <!-- CheerpJ writes System.out to an element with this id. -->
   <pre id="console"></pre>
+  <p><input id="stdin" disabled placeholder="Input for your program, press Enter to send" aria-label="Program input"></p>
   <p>Built with CheerpJ</p>
 
   <script type="module">
     const JAVA_VERSION = Number(new URLSearchParams(location.search).get('java') ?? 21);
     const $ = (id) => document.getElementById(id);
 
+    function print(text, className) {
+      const span = document.createElement('span');
+      span.className = className ?? '';
+      span.textContent = text;
+      $('console').append(span);
+    }
+
+    // Java blocks on this promise until the user presses Enter.
+    function readLine() {
+      $('stdin').disabled = false;
+      $('stdin').focus();
+      $('status').textContent = 'Waiting for input…';
+      return new Promise((resolve) => {
+        $('stdin').onkeydown = (event) => {
+          if (event.key !== 'Enter') return;
+          const line = $('stdin').value;
+          $('stdin').value = '';
+          $('stdin').disabled = true;
+          $('status').textContent = 'Running…';
+          print(line + '\n', 'stdin');
+          resolve(line);
+        };
+      });
+    }
+
     async function run() {
       $('run').disabled = true;
       $('console').textContent = '';
       cheerpOSAddStringFile('/str/Main.java', $('source').value);
+      cheerpOSAddStringFile('/str/KodigoRun.java', wrapper);
 
       $('status').textContent = 'Compiling…';
       const t0 = performance.now();
-      const compiled = await cheerpjRunMain('com.sun.tools.javac.Main', '/files/', '/str/Main.java', '-d', '/files/');
+      const compiled = await cheerpjRunMain('com.sun.tools.javac.Main', '/files/', '/str/Main.java', '/str/KodigoRun.java', '-d', '/files/');
       const t1 = performance.now();
 
       let exitCode = compiled;
       if (compiled === 0) {
         $('status').textContent = 'Running…';
-        exitCode = await cheerpjRunMain('Main', '/files/');
+        exitCode = await cheerpjRunMain('KodigoRun', '/files/');
       }
       const result = { compiled, exitCode, compileMs: Math.round(t1 - t0), runMs: Math.round(performance.now() - t1) };
       $('status').textContent = JSON.stringify(result);
@@ -51,8 +80,16 @@
       return result;
     }
 
+    const wrapper = await (await fetch('KodigoRun.java')).text();
     const t0 = performance.now();
-    await cheerpjInit({ version: JAVA_VERSION, status: 'none' });
+    await cheerpjInit({
+      version: JAVA_VERSION,
+      status: 'none',
+      natives: {
+        Java_KodigoRun_readLine: async (lib) => readLine(),
+        Java_KodigoRun_write: async (lib, text, isError) => print(text, isError ? 'stderr' : 'stdout'),
+      },
+    });
     $('status').textContent = `Ready, Java ${JAVA_VERSION}, init ${Math.round(performance.now() - t0)} ms`;
     $('run').disabled = false;
     $('run').onclick = run;
