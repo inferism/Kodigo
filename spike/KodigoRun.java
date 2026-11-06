@@ -3,8 +3,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 import javax.tools.ToolProvider;
 
 // Connects javac and the user's program to the page. A worker has no #console for CheerpJ to write to.
@@ -55,9 +53,7 @@ public class KodigoRun {
     public static void main(String[] args) throws Exception {
         if (args.length > 0 && args[0].equals("compile")) {
             OutputStream errors = pageStream(true);
-            List<String> javac = new ArrayList<>(List.of("-g", "/str/Main.java", "-d", "/files/"));
-            javac.addAll(List.of(args).subList(1, args.length));
-            System.exit(ToolProvider.getSystemJavaCompiler().run(null, errors, errors, javac.toArray(new String[0])));
+            System.exit(ToolProvider.getSystemJavaCompiler().run(null, errors, errors, "-g", "/str/Main.java", "-d", "/files/"));
         }
         System.setIn(new PageInput());
         System.setOut(new PrintStream(pageStream(false), true, "UTF-8"));

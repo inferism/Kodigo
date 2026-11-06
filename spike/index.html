@@ -65,8 +65,6 @@
         $('run').disabled = false;
         window.spikeRun = run;
       },
-      warmed: ({ ms }) => { window.warmedMs = ms; },
-      resources: ({ list }) => { window.resources = list; },
       done: ({ result }) => {
         $('status').textContent = JSON.stringify(result);
         $('run').disabled = false;
@@ -79,7 +77,7 @@
       $('stop').disabled = true;
       $('stdin').disabled = true;
       $('status').textContent = 'Loading CheerpJ…';
-      runner = new Worker('worker.js' + location.search);
+      runner = new Worker('worker.js');
       runner.onmessage = ({ data }) => handlers[data.type](data);
       runner.onerror = (event) => print(event.message + '\n', 'stderr');
     }

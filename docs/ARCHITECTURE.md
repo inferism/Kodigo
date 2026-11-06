@@ -122,9 +122,25 @@ Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`.
 | Return visit: page load | 0.08s |
 | Return visit: first run | 13 to 32s |
 
+**Speedups added after those timings:** The spike now loads a precompiled `kodigo.jar`, uses `preloadResources` from `preload.json`, and compiles a small class in the background after startup. Rebuild the jar whenever `KodigoRun.java` changes. Each setup below ran 4 times with an empty cache. "Total" is the time from opening the page to the program finishing.
+
+| Setup | Total for each run | Stalled past 90s |
+|---|---|---|
+| Original | 30, 94, 57, 34s | 0 |
+| Precompiled jar | 17, 37s | 2 |
+| Jar and preload | 14, 23, 13s | 1 |
+| All three, Run clicked as soon as it's enabled | 18, 13, 36s | 1 |
+| All three, Run clicked after warm-up ends | 13, 70, 12, 99s | 0 |
+
+- **Warm-up is the main gain.** After it ends, Run took 3.3 to 4.5s in all 4 tests.
+- **It doesn't make the download faster.** The warm-up itself took 9 to 95s, so a student who clicks Run early still waits.
+- **These are small samples on a CDN whose speed varies,** so treat the jar and preload results as promising rather than proven.
+
+**Speed ideas for later:** Keep one Java process running between compiles, test Java 17 and the `wasmGC` option, cache files with a service worker if the license allows it, keep a spare warmed worker for after Stop, and ask Leaning Technologies whether an open-source Kodigo could self-host for free.
+
 **Known problems:**
 
-- **Slow first runs:** In the runs that were logged, the delay came from slow downloads of `21/lib/modules` from the CDN, while the page stayed responsive. The run that passed 90s wasn't logged, so its cause is unconfirmed. Phase 1 needs a clear loading state. It should also test `preloadResources`, and compiling a small class in the background on page load.
+- **Slow first runs:** In the runs that were logged, the delay came from slow downloads of `21/lib/modules` from the CDN, while the page stayed responsive. Runs past 90s still happen, and the ones in the speed test weren't logged, so their cause is unconfirmed. Phase 1 needs a clear loading state.
 - **Background tabs:** Runs in a hidden Browser pane took minutes or never finished, so don't trust timing from a hidden tab.
 - **Stack traces:** They show `Unknown Source` instead of line numbers, even with `-g`.
 - **Class names:** The wrapper assumes the class is called `Main`, and a user class called `KodigoRun` would clash with it.
