@@ -32,7 +32,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Choose the build tool and UI framework, if any are needed
 - [ ] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
 - [ ] Monaco editor with Java highlighting
-- [ ] Define the runner contract and build the Java runner
+- [x] Define the runner contract and build the Java runner
 - [ ] Output panel with separate stdout and stderr
 - [ ] Run button and loading progress for the first download
 - [ ] Compile errors with clickable line numbers
@@ -46,7 +46,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 **Model:** Sonnet 5.5, except Opus 5.5 for the stop button and `Scanner` input. Both depend on how CheerpJ behaves.
 
 - [ ] Stop button
-- [ ] Clear way to enter input for `Scanner` programs
+- [ ] Type `Scanner` input directly in the output panel, like a real console, with no separate input box
 - [ ] Save the current code in the browser
 - [ ] Starter examples
 - [ ] Shareable links that keep the code in the URL, with no backend
