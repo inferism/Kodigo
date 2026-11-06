@@ -29,7 +29,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 **Model:** Sonnet 5.5, except Opus 5.5 for choosing the build tool and for the runner contract and Java runner. Those decisions shape everything after them.
 
-- [ ] Choose the build tool and UI framework, if any are needed
+- [x] Choose the build tool and UI framework, if any are needed
 - [ ] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
 - [ ] Monaco editor with Java highlighting
 - [ ] Define the runner contract and build the Java runner

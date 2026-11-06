@@ -2,7 +2,7 @@
 
 A free online compiler with built-in guides, aimed at students. Users pick a language and build what they want with guide buttons: each button inserts a code snippet, such as a `for` loop, and has a dropdown arrow that explains it. Java comes first, then more languages one at a time. The name is Filipino for "code" and also "cheat sheet".
 
-**Status:** Phase 0 passed, on localhost and on Vercel. Phase 1 is next. See [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** Phase 0 passed, on localhost and on Vercel. Phase 1 is in progress. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Read when relevant
 
@@ -58,7 +58,7 @@ The repo is private now, but the owner will make it public when Kodigo is finish
 
 - **Editor:** Monaco Editor
 - **Java:** CheerpJ (a JVM compiled to WebAssembly), running real `javac`
-- **UI:** Plain HTML, CSS and JS for the spike. A build tool and framework get decided after it passes.
+- **UI:** Plain HTML, CSS and JS with no framework, built with Vite. See the build setup in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Hosting:** Vercel free Hobby plan, deployed from the private GitHub repo
 - **CI and tests:** GitHub Actions and Playwright
 
