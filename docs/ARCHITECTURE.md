@@ -68,6 +68,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 |---|---|
 | Run code in the browser | It's free, needs no server to secure, and gives abusers nothing to exploit. |
 | Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ runs it with no card. Tested on localhost. The Vercel test is still to come. |
+| Accept a 15 to 36 second first run | The owner accepted this on 2026-11-06, with later runs taking about 3 seconds. |
 | Run CheerpJ in a Web Worker | It's the only tested way to stop a silent infinite loop without freezing the page. |
 | Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. |
 | Vercel Hobby for hosting | It's free with no card, deploys from a private repo, and allows custom HTTP headers. Hobby is for non-commercial use, so monetizing would mean revisiting it. |
@@ -134,7 +135,6 @@ Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`.
 **To answer in Phase 0:**
 
 - Does it work from a Vercel deployment? The owner is testing this. See [Phase 0 findings](#phase-0-findings).
-- Is the first run fast enough? This is the owner's call, using the timings below.
 - How large is the first download? It wasn't measured in bytes.
 
 **To decide later:**
