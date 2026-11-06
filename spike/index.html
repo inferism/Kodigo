@@ -63,6 +63,8 @@
         $('run').disabled = false;
         window.spikeRun = run;
       },
+      warmed: ({ ms }) => { window.warmedMs = ms; },
+      resources: ({ list }) => { window.resources = list; },
       done: ({ result }) => {
         $('status').textContent = JSON.stringify(result);
         $('run').disabled = false;
