@@ -18,6 +18,42 @@ A free online compiler with built-in guides, aimed at students. Users pick a lan
 3. **Check licenses before depending on anything.** CheerpJ in particular has terms that differ for commercial use. See the open questions in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 4. **Secrets stay out of git and out of the client.** Kodigo should not need any secrets in v1. If a task seems to need one, stop and ask.
 
+## Keep the repo safe to make public
+
+The repo is private now, but the owner will make it public when Kodigo is finished. Treat it as public already. Commits, issues, PRs and comments will all become visible, and a deleted file stays in git history. Do nothing that could put the owner at risk.
+
+**Never commit or post:**
+
+- `.env` files, API keys, tokens, passwords or service account files
+- Personal details, such as phone numbers, addresses, school IDs, or private emails beyond normal git authorship
+- Real people's data in tests, seed data or logs
+- Screenshots or logs that show private information
+- Absolute local paths like `C:\Users\...`
+- Copied code or content the license doesn't allow, including textbooks and paid course material
+- Third-party files, such as JDK or CheerpJ files, unless their license allows redistribution
+
+**Before every commit:**
+
+- Check the list of staged files and the diff for anything above.
+- Use `.gitignore` for `.env*`, `node_modules/`, `.vercel/`, build output and logs. Add it before the first code commit.
+
+**Ask the owner first before:**
+
+- Changing repo visibility or any GitHub or Vercel settings
+- Adding analytics, trackers, or anything that collects visitor data
+- Adding a GitHub Actions workflow that uses secrets
+- Deleting a branch, tag or release, other than merged task branches as [docs/WORKFLOW.md](docs/WORKFLOW.md) describes
+
+**If a secret or personal detail gets committed:** Stop and tell the owner right away. Don't hide it with a follow-up commit, because it stays in history. A leaked key must be replaced, even after it's removed.
+
+**Before the repo goes public, confirm with the owner:**
+
+- [ ] gitleaks finds nothing across the full git history
+- [ ] Issues, PRs and comments have been checked for private details
+- [ ] A license file is in place, and dependency licenses allow public use
+- [ ] GitHub Actions settings are safe for PRs from forks
+- [ ] Secret scanning and push protection are turned on
+
 ## Stack
 
 - **Editor:** Monaco Editor
