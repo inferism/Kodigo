@@ -13,7 +13,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [ ] An infinite loop can be stopped without freezing the tab
 - [ ] Measure the first load and the compile time
 - [ ] Confirm that modern syntax works, such as records and switch expressions
-- [ ] Confirm that it works from GitHub Pages, not only on localhost
+- [ ] Confirm that it works from a Vercel deployment, not only on localhost
 
 **Pass:** Hello World, compile errors and `Scanner` all work under a free license, with an acceptable load time.
 
@@ -21,15 +21,16 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 ## Phase 1: Working compiler
 
-**Goal:** Someone can open the site, write Java, and run it.
+**Goal:** Someone can open the site, pick Java, write code, and run it.
 
 - [ ] Choose the build tool and UI framework, if any are needed
+- [ ] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
 - [ ] Monaco editor with Java highlighting
 - [ ] Define the runner contract and build the Java runner
 - [ ] Output panel with separate stdout and stderr
 - [ ] Run button and loading progress for the first download
 - [ ] Compile errors with clickable line numbers
-- [ ] Deploy to GitHub Pages through Actions
+- [ ] Deploy to Vercel from the private repo
 - [ ] Playwright test covering the four execution cases in CLAUDE.md
 
 ## Phase 2: Usable every day
@@ -43,18 +44,20 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [ ] Shareable links that keep the code in the URL, with no backend
 - [ ] Mobile layout and light and dark themes
 
-## Phase 3: Guides
+## Phase 3: Guide buttons
 
-**Goal:** Deliver the part that makes Kodigo more than another compiler. Learners read a short guide and run its examples right there.
+**Goal:** Deliver the part that makes Kodigo more than another compiler. Users build their project by clicking buttons that insert code, and they can open each button to learn what the code does.
 
-- [ ] Decide the guide format and language (see open questions in ARCHITECTURE.md)
-- [ ] Guide page with an "Open in editor" button for each example
-- [ ] First Java track: output, variables, input, conditions, loops, methods, arrays
+- [ ] Define the guide data format
+- [ ] Guide panel that shows the buttons for the current language
+- [ ] Clicking a button inserts its snippet at the cursor
+- [ ] Dropdown arrow on each button that explains the snippet
+- [ ] First Java set: `System.out.print`, variables, `Scanner`, `if`, `for`, `while`, methods, arrays
 - [ ] Beginner-friendly explanations of common compile errors
 
 ## Phase 4: More languages
 
-Add one runner per phase item. The UI should not need language-specific changes.
+Add one runner and one guide data file per item. The UI should not need language-specific changes.
 
 - [ ] JavaScript, using a Web Worker
 - [ ] Python, using Pyodide

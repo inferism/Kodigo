@@ -1,6 +1,6 @@
 # Kodigo
 
-A free online compiler with built-in guides, aimed at students. Java comes first, then more languages one at a time. The name is Filipino for "code" and also "cheat sheet".
+A free online compiler with built-in guides, aimed at students. Users pick a language and build what they want with guide buttons: each button inserts a code snippet, such as a `for` loop, and has a dropdown arrow that explains it. Java comes first, then more languages one at a time. The name is Filipino for "code" and also "cheat sheet".
 
 **Status:** Pre-code. The next step is the Phase 0 spike in [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -22,14 +22,14 @@ A free online compiler with built-in guides, aimed at students. Java comes first
 - **Editor:** Monaco Editor
 - **Java:** CheerpJ (a JVM compiled to WebAssembly), running real `javac`
 - **UI:** Plain HTML, CSS and JS for the spike. A build tool and framework get decided after it passes.
-- **Hosting:** GitHub Pages
+- **Hosting:** Vercel free Hobby plan, deployed from the private GitHub repo
 - **CI and tests:** GitHub Actions and Playwright
 
 Treat anything marked unverified in the docs as a guess until it has been tested. Read the current docs for CheerpJ and Monaco instead of relying on memory.
 
 ## Architecture rule
 
-Every language is a **runner** behind one shared contract. The editor, output panel and guides must not contain language-specific logic. Adding a language should mean adding a runner, not changing the UI.
+Every language is a **runner** behind one shared contract, plus a **guide data file** for its buttons. The editor, output panel and guide buttons must not contain language-specific logic. Adding a language should mean adding a runner and a data file, not changing the UI.
 
 ## How to work
 
