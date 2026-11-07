@@ -34,7 +34,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Monaco editor with Java highlighting
 - [x] Define the runner contract and build the Java runner
 - [x] Output panel with separate stdout and stderr
-- [ ] Run button and loading progress for the first download
+- [x] Run button and loading progress for the first download
 - [ ] Compile errors with clickable line numbers
 - [ ] Deploy to Vercel from the private repo
 - [ ] Playwright test covering the four execution cases in CLAUDE.md
@@ -45,7 +45,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 **Model:** Sonnet 5.5, except Opus 5.5 for the stop button and `Scanner` input. Both depend on how CheerpJ behaves.
 
-- [ ] Stop button
+- [x] Stop button
 - [ ] Type `Scanner` input directly in the output panel, like a real console, with no separate input box
 - [ ] Save the current code in the browser
 - [ ] Starter examples
