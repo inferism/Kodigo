@@ -26,8 +26,10 @@ public class Main {
     }
 }
 `;
+// The marker proves the program compiled and is executing before the test checks the page or presses Stop.
 const INFINITE_LOOP = `public class Main {
     public static void main(String[] args) {
+        System.out.println("loop started");
         while (true) { }
     }
 }
@@ -92,9 +94,10 @@ test('an infinite loop can be stopped without freezing the page, and the next ru
   await runCode(INFINITE_LOOP);
   await expect(status()).toHaveText('Running…');
   await expect(page.locator('#stop')).toBeVisible();
+  await expect(output()).toContainText('loop started', { timeout: 60_000 }); // compiled and running
 
   // The page must still respond while the loop spins.
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1000);
   const delay = await page.evaluate(() => new Promise((resolve) => {
     const start = performance.now();
     setTimeout(() => resolve(performance.now() - start), 50);
