@@ -77,7 +77,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ runs it with no card. Tested on localhost and on a Vercel preview deployment. |
 | Accept a 15 to 36 second first run | The owner accepted this on 2026-11-06, with later runs taking about 3 seconds. |
 | Run CheerpJ in a Web Worker | It's the only tested way to stop a silent infinite loop without freezing the page. |
-| Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. |
+| Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. Vercel redeploys production by itself on every merge to `main`, which the owner confirmed on 2026-11-07 when the merge of PR 21 appeared as a Ready production deployment. |
 | Vercel Hobby for hosting | It's free with no card, deploys from a private repo, and allows custom HTTP headers. Hobby is for non-commercial use, so monetizing would mean revisiting it. |
 | Private repo for now | The owner's choice. Keep this in mind for CheerpJ's license, because a private repo can't rely on any open-source terms. |
 | Guide panel on the right of the editor | The owner's choice, so the editor keeps most of the space. On a laptop it's a fixed width of about 14 to 18rem that can collapse, not a percentage, because 10% is too narrow for labels like `System.out.print` and a dropdown arrow. On a phone it becomes a drawer at the bottom. Phase 3 builds it, and the compiler page's layout already leaves room for it. |
