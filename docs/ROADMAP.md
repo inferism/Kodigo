@@ -37,7 +37,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Run button and loading progress for the first download
 - [x] Compile errors with clickable line numbers
 - [ ] Deploy to Vercel from the private repo
-- [ ] Playwright test covering the four execution cases in CLAUDE.md
+- [x] Playwright test covering the four execution cases in CLAUDE.md
 
 ## Phase 2: Usable every day
 
