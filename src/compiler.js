@@ -35,18 +35,22 @@ const setMarkers = () => monaco.editor.setModelMarkers(editor.getModel(), 'kodig
 const clearMarkers = () => { markers = []; setMarkers(); };
 editor.onDidChangeModelContent(clearMarkers);
 
-function showDiagnostic(error) {
+// version is the editor's version when Run was clicked. Compiling takes a few seconds, so the code may
+// have changed since, and old errors must not be drawn on the new code.
+function showDiagnostic(error, version) {
   const model = editor.getModel();
   const line = Math.min(error.line, model.getLineCount());
-  markers.push({
-    severity: monaco.MarkerSeverity.Error,
-    message: error.message,
-    startLineNumber: line,
-    startColumn: 1, // the runner only gives line numbers, so the whole line is marked
-    endLineNumber: line,
-    endColumn: model.getLineMaxColumn(line),
-  });
-  setMarkers();
+  if (model.getVersionId() === version) {
+    markers.push({
+      severity: monaco.MarkerSeverity.Error,
+      message: error.message,
+      startLineNumber: line,
+      startColumn: 1, // the runner only gives line numbers, so the whole line is marked
+      endLineNumber: line,
+      endColumn: model.getLineMaxColumn(line),
+    });
+    setMarkers();
+  }
   output.diagnostic(error, () => {
     const target = Math.min(error.line, model.getLineCount());
     editor.revealLineInCenter(target);
@@ -101,12 +105,13 @@ async function run() {
   stopButton.hidden = false;
   output.clear();
   clearMarkers();
+  const version = editor.getModel().getVersionId();
   status('Running…');
   try {
     const { exitCode, stopped } = await runner.run(editor.getValue(), {
       onStdout: output.stdout,
       onStderr: output.stderr,
-      onDiagnostic: showDiagnostic, // javac's own text also shows in the panel
+      onDiagnostic: (error) => showDiagnostic(error, version), // javac's own text also shows in the panel
       // Typing input into the panel is a later item. Failing is better than waiting forever.
       readInput: () => Promise.reject(new Error("This program asks for input, which isn't supported yet.")),
     });
