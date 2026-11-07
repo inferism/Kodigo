@@ -35,7 +35,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Define the runner contract and build the Java runner
 - [x] Output panel with separate stdout and stderr
 - [x] Run button and loading progress for the first download
-- [ ] Compile errors with clickable line numbers
+- [x] Compile errors with clickable line numbers
 - [ ] Deploy to Vercel from the private repo
 - [ ] Playwright test covering the four execution cases in CLAUDE.md
 

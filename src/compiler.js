@@ -29,6 +29,32 @@ const editor = monaco.editor.create(document.getElementById('editor'), {
   fontSize: 15,
 });
 
+// Red marks in the editor for compile errors. They go away on the next run or edit, so they never point at stale lines.
+let markers = [];
+const setMarkers = () => monaco.editor.setModelMarkers(editor.getModel(), 'kodigo', markers);
+const clearMarkers = () => { markers = []; setMarkers(); };
+editor.onDidChangeModelContent(clearMarkers);
+
+function showDiagnostic(error) {
+  const model = editor.getModel();
+  const line = Math.min(error.line, model.getLineCount());
+  markers.push({
+    severity: monaco.MarkerSeverity.Error,
+    message: error.message,
+    startLineNumber: line,
+    startColumn: 1, // the runner only gives line numbers, so the whole line is marked
+    endLineNumber: line,
+    endColumn: model.getLineMaxColumn(line),
+  });
+  setMarkers();
+  output.diagnostic(error, () => {
+    const target = Math.min(error.line, model.getLineCount());
+    editor.revealLineInCenter(target);
+    editor.setPosition({ lineNumber: target, column: 1 });
+    editor.focus();
+  });
+}
+
 const output = createOutput(document.getElementById('output'));
 document.getElementById('clear-output').onclick = output.clear;
 
@@ -74,12 +100,13 @@ async function run() {
   runButton.disabled = true;
   stopButton.hidden = false;
   output.clear();
+  clearMarkers();
   status('Running…');
   try {
     const { exitCode, stopped } = await runner.run(editor.getValue(), {
       onStdout: output.stdout,
       onStderr: output.stderr,
-      onDiagnostic() {}, // Clickable compile errors come later. javac's text already shows in the panel.
+      onDiagnostic: showDiagnostic, // javac's own text also shows in the panel
       // Typing input into the panel is a later item. Failing is better than waiting forever.
       readInput: () => Promise.reject(new Error("This program asks for input, which isn't supported yet.")),
     });
