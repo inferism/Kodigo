@@ -12,7 +12,19 @@ export function createOutput(box) {
   function flush() {
     timer = null;
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 8;
-    for (const [kind, text] of pending) {
+    for (const [kind, text, error, onClick] of pending) {
+      if (kind === 'diagnostic') {
+        const row = document.createElement('div');
+        row.className = kind;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = `Line ${error.line}`;
+        button.onclick = onClick;
+        row.append(button, ` ${error.message}\n`);
+        box.append(row);
+        size += row.textContent.length;
+        continue;
+      }
       let last = box.lastElementChild;
       if (last?.className !== kind) {
         last = document.createElement('span');
@@ -26,6 +38,11 @@ export function createOutput(box) {
 
     while (size > MAX + SLACK) {
       const first = box.firstElementChild;
+      if (first.className === 'diagnostic') { // drop a whole row, so its button isn't flattened into text
+        size -= first.textContent.length;
+        first.remove();
+        continue;
+      }
       const old = first.textContent;
       const cut = Math.min(size - MAX, old.length);
       first.textContent = old.slice(cut);
@@ -45,6 +62,11 @@ export function createOutput(box) {
   return {
     stdout: (text) => write('stdout', text),
     stderr: (text) => write('stderr', text),
+    // A row with a "Line N" button, queued with the text so it stays in order.
+    diagnostic(error, onClick) {
+      pending.push(['diagnostic', '', error, onClick]);
+      timer ??= setTimeout(flush, 16);
+    },
     clear() {
       clearTimeout(timer);
       timer = null;
