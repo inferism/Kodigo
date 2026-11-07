@@ -109,6 +109,17 @@ Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on
 - **Testing the runner:** Run `npm run dev` and open `/test/runner.html`. That page exists only on the dev server.
 - **DOMPurify warning:** `npm audit` reports a critical issue in Monaco 0.57.0's DOMPurify 3.4.15, and Monaco has its own built-in copy, so an npm override wouldn't change it. The listed issues depend on `IN_PLACE`, `SAFE_FOR_TEMPLATES` or `PARSER_MEDIA_TYPE`, and a search of Monaco's sanitizer found none of them. Don't run `npm audit fix --force`: it installs Monaco 0.56.0, which has an older DOMPurify. Update when a Monaco release includes 3.4.17 or later, and don't pass untrusted Markdown to Monaco until then.
 
+## Tests
+
+Tested on 2026-11-07 with Playwright 1.65.0 (Apache-2.0, free, no account) in Chromium. Run `npx playwright install chromium` once, then `npm test`.
+
+- **What it covers:** `test/execution.spec.js` runs the four execution cases from CLAUDE.md against the production build: a normal program, a compile error (line number, red mark, and the Line button that jumps to it), a `Scanner` program (today's clean failure, with a pending `test.fixme` for real typed input until Phase 2), and an infinite loop that Stop ends while the page stays responsive, followed by a run that works. The loop program prints a marker first, and the test waits for it, so Stop is never pressed while the program is still compiling.
+- **How it works:** `playwright.config.js` builds the site and serves it with `vite preview` on port 4174, one test at a time, with one retry and 2-minute timeouts. The tests share one page, so Java loads once. Code goes into the editor by pasting from the clipboard, because typing fights Monaco's auto-closing brackets, and the page has no test-only hooks.
+- **Results:** The suite took 36 to 53 seconds. It passed 6 runs out of 6, 5 of them with retries off, all with CheerpJ's files already cached. A cold first run wasn't measured. Breaking the code on purpose (Stop doing nothing, the Line rows never added, the red marks never set) made the matching test fail each time.
+- **Needs internet,** because CheerpJ loads from its CDN. A slow or stalled download can fail a run for reasons unrelated to our code, so rerun before suspecting a bug.
+- **No GitHub Actions workflow yet,** so the suite only runs when someone runs `npm test`. Adding one is a separate task. It needs no secrets, but check the fork-PR settings first, since the repo will go public.
+- **Still untested:** Firefox, Safari, phones, and the home page.
+
 ## CheerpJ license
 
 Checked on 2026-11-06 against [cheerpj.com/licensing](https://cheerpj.com/licensing/) and [the licensing docs](https://cheerpj.com/docs/licensing), for CheerpJ 5.0. Those pages have no "last updated" date, so check them again before launch.
