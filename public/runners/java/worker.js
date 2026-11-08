@@ -30,15 +30,12 @@ onmessage = async ({ data }) => {
   if (data.type === 'run') send('done', { exitCode: await compileAndRun(data.source) });
 };
 
-// The ids of folders whose worker is still alive, in any tab.
-async function liveIds() {
-  const { held } = await navigator.locks.query();
-  return held.filter(({ name }) => name.startsWith(lockPrefix)).map(({ name }) => name.slice(lockPrefix.length)).join(',');
-}
+// Folder locks this worker has claimed for deleting, by folder id. Calling one releases that lock.
+const claims = new Map();
 
 async function compile(source) {
   compilerOutput = '';
-  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', classDir, await liveIds(), source);
+  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', classDir, source);
   const output = compilerOutput;
   compilerOutput = null;
   return { exitCode, output };
@@ -65,6 +62,17 @@ async function compileAndRun(source) {
       if (done === total) preloaded();
     },
     natives: {
+      // ifAvailable means no waiting: if a live worker holds the lock, the claim fails and the folder is kept.
+      Java_kodigo_KodigoRun_claimFolder: async (lib, folderId) => new Promise((resolve) => {
+        navigator.locks.request(lockPrefix + folderId, { ifAvailable: true }, (lock) => {
+          resolve(lock !== null);
+          if (lock) return new Promise((release) => claims.set(folderId, release));
+        });
+      }),
+      Java_kodigo_KodigoRun_releaseFolder: async (lib, folderId) => {
+        claims.get(folderId)?.();
+        claims.delete(folderId);
+      },
       Java_kodigo_KodigoRun_setCandidates: async (lib, classNames) => { candidates = classNames; },
       Java_kodigo_KodigoRun_readLine: async () => {
         send('readLine');

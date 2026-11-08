@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Modifier;
@@ -36,6 +35,9 @@ public class KodigoRun {
     private static native String readLine();
     private static native void write(String text, boolean isError);
     private static native void setCandidates(String classNames);
+    // Takes another worker's folder lock if nobody holds it, so the folder can be deleted safely.
+    private static native boolean claimFolder(String id);
+    private static native void releaseFolder(String id);
 
     private static OutputStream pageStream(boolean isError) {
         return new OutputStream() {
@@ -110,19 +112,26 @@ public class KodigoRun {
         }
     }
 
-    // Each tab's worker has its own folder, and closed tabs leave theirs behind. liveIds names the
-    // folders whose worker still holds its lock, so every other folder belongs to a closed tab.
-    private static void deleteUnusedFolders(Path parent, Set<String> liveIds) throws IOException {
+    // Each tab's worker has its own folder, and closed tabs leave theirs behind. A live worker holds its
+    // folder's lock for its whole life, so getting the lock proves the owner is gone. The lock is held
+    // while deleting, so no worker can take the folder over meanwhile.
+    private static void deleteUnusedFolders(Path parent, Path keep) throws IOException {
         try (Stream<Path> folders = Files.list(parent)) {
             for (Path folder : folders.toList()) {
-                if (!liveIds.contains(folder.getFileName().toString())) delete(folder, false);
+                String id = folder.getFileName().toString();
+                if (folder.equals(keep) || !claimFolder(id)) continue;
+                try {
+                    delete(folder, false);
+                } finally {
+                    releaseFolder(id);
+                }
             }
         }
     }
 
     // Uses javac's own parser, which isn't fooled by comments, strings or nested classes.
     // Code with syntax errors is fine here: the real compile below reports them.
-    private static void compile(String classDir, String liveIds, String code) throws Exception {
+    private static void compile(String classDir, String code) throws Exception {
         JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         JavacTask parser = (JavacTask) javac.getTask(Writer.nullWriter(), null, (error) -> {}, null, null,
             List.of(new Source("Main.java", code)));
@@ -152,7 +161,7 @@ public class KodigoRun {
         Path dir = Path.of(classDir);
         Files.createDirectories(dir);
         delete(dir, true);
-        deleteUnusedFolders(dir.getParent(), Set.of(liveIds.split(",")));
+        deleteUnusedFolders(dir.getParent(), dir);
 
         PrintWriter errors = new PrintWriter(pageStream(true), true, StandardCharsets.UTF_8);
         boolean compiled = javac.getTask(errors, null, null, List.of("-g", "-d", classDir), null,
@@ -198,7 +207,7 @@ public class KodigoRun {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args[0].equals("compile")) compile(args[1], args[2], args[3]);
+        if (args[0].equals("compile")) compile(args[1], args[2]);
         else run(args[1]);
     }
 }
