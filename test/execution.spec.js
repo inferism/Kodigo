@@ -60,6 +60,14 @@ async function runCode(code) {
   await run().click();
 }
 
+test('the editor highlights Java code', async () => {
+  // Keywords, strings and plain text get different colours once Java highlighting is registered.
+  await expect(page.locator('.view-lines .view-line').first()).toBeVisible({ timeout: 30_000 });
+  const colours = await page.locator('.view-lines .view-line span span')
+    .evaluateAll((spans) => new Set(spans.map((span) => getComputedStyle(span).color)).size);
+  expect(colours).toBeGreaterThanOrEqual(3);
+});
+
 test('a normal program prints its output and exits with code 0', async () => {
   await runCode(HELLO);
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
@@ -75,10 +83,13 @@ test('a compile error shows the right line, a red mark, and a button that jumps 
 
   await page.locator('#output .diagnostic button').click();
   await expect(page.locator('#editor .native-edit-context')).toBeFocused();
-  const cursor = await page.locator('.cursors-layer .cursor').first().boundingBox();
-  const line3 = await page.locator('.view-lines .view-line').nth(2).boundingBox();
-  expect(cursor.y).toBeGreaterThanOrEqual(line3.y - 2);
-  expect(cursor.y).toBeLessThan(line3.y + line3.height);
+  // Monaco repaints the cursor a moment after the click, so wait for it to reach line 3. Line 3 is found
+  // by its text, because Monaco doesn't keep its line elements in line order.
+  await expect.poll(async () => {
+    const cursor = await page.locator('.cursors-layer .cursor').first().boundingBox();
+    const line3 = await page.locator('.view-lines .view-line', { hasText: 'int x = 5' }).boundingBox();
+    return cursor.y >= line3.y - 2 && cursor.y < line3.y + line3.height;
+  }).toBe(true);
 });
 
 test('a program that reads input fails with a clear message and Java recovers', async () => {

@@ -1,6 +1,6 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
-import 'monaco-editor/languages/definitions/java/register';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
+import { editorLanguages } from './editor-languages.js';
 import { languages } from './languages.js';
 import { createOutput } from './output.js';
 import { runners } from './runner-map.js';
@@ -12,6 +12,8 @@ const id = new URLSearchParams(location.search).get('lang');
 const language = languages.find((l) => l.id === id) ?? languages[0];
 
 document.getElementById('language-label').textContent = language.label;
+
+await editorLanguages[language.id]?.(); // highlighting has to be registered before the editor is created
 
 monaco.editor.defineTheme('kodigo', {
   base: 'vs-dark',
