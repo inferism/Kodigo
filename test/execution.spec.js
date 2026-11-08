@@ -241,6 +241,26 @@ test('Stop works while the program waits for input, and the next run works', asy
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
 });
 
+test('refreshing warns only when the code has changed, and the starter comes back', async ({ browser }) => {
+  const fresh = await (await browser.newContext()).newPage();
+  const dialogs = [];
+  fresh.on('dialog', (dialog) => { dialogs.push(dialog.type()); dialog.accept(); });
+  await fresh.goto('http://localhost:4174/compiler/?lang=java');
+  await expect(fresh.locator('#editor')).toContainText('Hello, Kodigo!');
+
+  await fresh.reload(); // untouched starter: no warning
+  expect(dialogs).toEqual([]);
+
+  await fresh.locator('#editor').click();
+  await fresh.keyboard.type('// my edit');
+  await expect(fresh.locator('#editor')).toContainText('my edit');
+  await fresh.reload(); // changed code: the browser asks before leaving
+  expect(dialogs).toEqual(['beforeunload']);
+  await expect(fresh.locator('#editor')).toContainText('Hello, Kodigo!');
+  await expect(fresh.locator('#editor')).not.toContainText('my edit');
+  await fresh.context().close();
+});
+
 test('an infinite loop can be stopped without freezing the page, and the next run works', async () => {
   await runCode(INFINITE_LOOP);
   await expect(status()).toHaveText('Running…');

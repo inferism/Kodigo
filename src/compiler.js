@@ -31,6 +31,12 @@ const editor = monaco.editor.create(document.getElementById('editor'), {
   fontSize: 15,
 });
 
+// Nothing is saved: reopening always shows the starter. So warn before a close or refresh would throw edits away.
+// The browser shows its own generic wording, because pages can't set the text.
+window.addEventListener('beforeunload', (event) => {
+  if (editor.getValue() !== language.starter) event.preventDefault();
+});
+
 // Red marks in the editor for compile errors. They go away on the next run or edit, so they never point at stale lines.
 let markers = [];
 const setMarkers = () => monaco.editor.setModelMarkers(editor.getModel(), 'kodigo', markers);
