@@ -46,6 +46,40 @@ public class Main extends Base {
     static { System.out.println("Main initialized"); }
 }
 `;
+// Regression: a class from an earlier run must not satisfy a later program that no longer defines it.
+const DEFINES_HELPER = `public class Main {
+    public static void main(String[] args) {
+        Helper.hi();
+    }
+}
+class Helper {
+    static void hi() { System.out.println("Helper ran"); }
+}
+`;
+const USES_MISSING_HELPER = `public class Main {
+    public static void main(String[] args) {
+        Helper.hi();
+    }
+}
+`;
+// Regression: cleanup must never delete a folder whose lock is held, however the timing falls, and must
+// delete it once the lock is free. The page holds the lock here, as another tab's worker would.
+const MAKES_LOCKED_FOLDER = `import java.nio.file.*;
+public class Main {
+    public static void main(String[] args) throws Exception {
+        Path folder = Files.createDirectories(Path.of("/files/kodigo/test-owner"));
+        Files.writeString(folder.resolve("Probe.class"), "probe");
+        System.out.println("folder made");
+    }
+}
+`;
+const CHECKS_LOCKED_FOLDER = `import java.nio.file.*;
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(Files.exists(Path.of("/files/kodigo/test-owner/Probe.class")) ? "folder kept" : "folder gone");
+    }
+}
+`;
 // The marker proves the program compiled and is executing before the test checks the page or presses Stop.
 const INFINITE_LOOP = `public class Main {
     public static void main(String[] args) {
@@ -104,6 +138,38 @@ test("an inherited main runs after the public class's static block", async () =>
   await runCode(INHERITED_MAIN);
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).toContainText(/Main initialized\s+Base main ran/);
+});
+
+test('a class left over from an earlier run is not used by the next program', async () => {
+  await runCode(DEFINES_HELPER);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('Helper ran');
+
+  await runCode(USES_MISSING_HELPER);
+  await expect(status()).toHaveText('Finished, exit code 1', { timeout: 60_000 });
+  await expect(output()).toContainText('Main.java:3: error: cannot find symbol');
+  await expect(output()).not.toContainText('Helper ran');
+});
+
+test('cleanup keeps a folder while its lock is held and deletes it once released', async () => {
+  // Holds the lock the way a live worker does, until the test releases it.
+  await page.evaluate(() => new Promise((held) => {
+    navigator.locks.request('kodigo-classes-test-owner', () => {
+      held();
+      return new Promise((release) => { window.releaseTestLock = release; });
+    });
+  }));
+  await runCode(MAKES_LOCKED_FOLDER);
+  await expect(output()).toContainText('folder made', { timeout: 60_000 });
+
+  await runCode(CHECKS_LOCKED_FOLDER); // compiling runs cleanup first
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('folder kept');
+
+  await page.evaluate(() => window.releaseTestLock());
+  await runCode(CHECKS_LOCKED_FOLDER);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('folder gone');
 });
 
 test('a compile error shows the right line, a red mark, and a button that jumps to it', async () => {

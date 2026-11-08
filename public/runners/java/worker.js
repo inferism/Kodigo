@@ -4,7 +4,16 @@ importScripts('https://cjrtnc.leaningtech.com/5.0/loader.js');
 
 const send = (type, data) => postMessage({ type, ...data });
 // kodigo.jar is src/runners/KodigoRun.java, precompiled. Rebuild it when that file changes.
-const classpath = '/str/kodigo.jar:/files/';
+// /files/ is shared by every tab, so this worker compiles into a folder of its own.
+const id = crypto.randomUUID();
+const classDir = `/files/kodigo/${id}/`;
+// This lock is held for the worker's whole life, even while the computer sleeps. The browser releases it
+// when the tab closes or the worker stops, which tells other tabs the folder can be deleted.
+const lockPrefix = 'kodigo-classes-';
+const lockHeld = new Promise((resolve) => {
+  navigator.locks.request(lockPrefix + id, () => { resolve(); return new Promise(() => {}); });
+});
+const classpath = `/str/kodigo.jar:${classDir}`;
 const wrapper = 'kodigo.KodigoRun';
 let candidates = ''; // Classes that might hold main, from the last compile. KodigoRun picks one.
 let provideLine;
@@ -21,9 +30,12 @@ onmessage = async ({ data }) => {
   if (data.type === 'run') send('done', { exitCode: await compileAndRun(data.source) });
 };
 
+// Folder locks this worker has claimed for deleting, by folder id. Calling one releases that lock.
+const claims = new Map();
+
 async function compile(source) {
   compilerOutput = '';
-  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', source);
+  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', classDir, source);
   const output = compilerOutput;
   compilerOutput = null;
   return { exitCode, output };
@@ -37,6 +49,7 @@ async function compileAndRun(source) {
 }
 
 (async () => {
+  await lockHeld; // Before any compile, so no other tab can see this folder without its lock.
   const jar = await (await fetch('kodigo.jar')).arrayBuffer();
   // preload.json lists the runtime files a compile and run needs, from cjGetRuntimeResources().
   const preloadResources = await (await fetch('preload.json')).json();
@@ -49,6 +62,17 @@ async function compileAndRun(source) {
       if (done === total) preloaded();
     },
     natives: {
+      // ifAvailable means no waiting: if a live worker holds the lock, the claim fails and the folder is kept.
+      Java_kodigo_KodigoRun_claimFolder: async (lib, folderId) => new Promise((resolve) => {
+        navigator.locks.request(lockPrefix + folderId, { ifAvailable: true }, (lock) => {
+          resolve(lock !== null);
+          if (lock) return new Promise((release) => claims.set(folderId, release));
+        });
+      }),
+      Java_kodigo_KodigoRun_releaseFolder: async (lib, folderId) => {
+        claims.get(folderId)?.();
+        claims.delete(folderId);
+      },
       Java_kodigo_KodigoRun_setCandidates: async (lib, classNames) => { candidates = classNames; },
       Java_kodigo_KodigoRun_readLine: async () => {
         send('readLine');
