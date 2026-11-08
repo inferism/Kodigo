@@ -60,7 +60,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 **Model:** Sonnet 5.5 for all of this phase, except Opus 5.5 for defining the guide data format, since every language will reuse it.
 
 - [x] Define the guide data format
-- [ ] Guide panel that shows the buttons for the current language
+- [x] Guide panel that shows the buttons for the current language
 - [ ] Clicking a button inserts its snippet at the cursor
 - [ ] Dropdown arrow on each button that explains the snippet
 - [ ] First Java set: `System.out.print`, variables, `Scanner`, `if`, `for`, `while`, methods, arrays

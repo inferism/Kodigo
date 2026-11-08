@@ -14,20 +14,29 @@
     <span id="language-label"></span>
   </header>
   <main>
-    <div class="toolbar">
-      <button type="button" id="run" disabled>Run</button>
-      <button type="button" id="stop" hidden>Stop</button>
-      <progress id="load-progress" max="100" hidden></progress>
-      <span id="status" role="status"></span>
-    </div>
-    <div id="editor" aria-label="Code editor"></div>
-    <section class="output" aria-labelledby="output-title">
-      <div class="output-bar">
-        <h2 id="output-title">Output</h2>
-        <button type="button" id="clear-output">Clear</button>
+    <div class="workspace">
+      <div class="toolbar">
+        <button type="button" id="run" disabled>Run</button>
+        <button type="button" id="stop" hidden>Stop</button>
+        <progress id="load-progress" max="100" hidden></progress>
+        <span id="status" role="status"></span>
       </div>
-      <pre id="output" role="log" tabindex="0"></pre>
-    </section>
+      <div id="editor" aria-label="Code editor"></div>
+      <section class="output" aria-labelledby="output-title">
+        <div class="output-bar">
+          <h2 id="output-title">Output</h2>
+          <button type="button" id="clear-output">Clear</button>
+        </div>
+        <pre id="output" role="log" tabindex="0"></pre>
+      </section>
+    </div>
+    <aside id="guide" class="guide" aria-labelledby="guide-title">
+      <h2 id="guide-title"><button type="button" class="guide-toggle" aria-expanded="true" aria-controls="guide-body">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Guide</span>
+      </button></h2>
+      <div id="guide-body" class="guide-body"></div>
+    </aside>
   </main>
   <footer>
     <p>Built with <a href="https://cheerpj.com" rel="noopener">CheerpJ</a></p>
