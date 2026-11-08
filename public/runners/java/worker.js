@@ -4,7 +4,9 @@ importScripts('https://cjrtnc.leaningtech.com/5.0/loader.js');
 
 const send = (type, data) => postMessage({ type, ...data });
 // kodigo.jar is src/runners/KodigoRun.java, precompiled. Rebuild it when that file changes.
-const classpath = '/str/kodigo.jar:/files/';
+// /files/ is shared by every tab, so this worker compiles into a folder of its own.
+const classDir = `/files/kodigo/${crypto.randomUUID()}/`;
+const classpath = `/str/kodigo.jar:${classDir}`;
 const wrapper = 'kodigo.KodigoRun';
 let candidates = ''; // Classes that might hold main, from the last compile. KodigoRun picks one.
 let provideLine;
@@ -23,7 +25,7 @@ onmessage = async ({ data }) => {
 
 async function compile(source) {
   compilerOutput = '';
-  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', source);
+  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', classDir, source);
   const output = compilerOutput;
   compilerOutput = null;
   return { exitCode, output };

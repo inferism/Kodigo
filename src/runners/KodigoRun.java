@@ -4,6 +4,7 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.JavacTask;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -15,7 +16,11 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import javax.lang.model.SourceVersion;
@@ -95,7 +100,32 @@ public class KodigoRun {
 
     // Uses javac's own parser, which isn't fooled by comments, strings or nested classes.
     // Code with syntax errors is fine here: the real compile below reports them.
-    private static void compile(String code) throws Exception {
+    // Deletes a folder's files, then the folder, unless onlyClasses is set. Deepest paths go first.
+    private static void delete(Path root, boolean onlyClasses) throws IOException {
+        try (Stream<Path> paths = Files.walk(root)) {
+            paths.sorted(Comparator.reverseOrder())
+                .filter((path) -> !onlyClasses || path.toString().endsWith(".class"))
+                .forEach((path) -> path.toFile().delete());
+        }
+    }
+
+    // Each tab's worker has its own folder, and closed tabs leave theirs behind. A day without a
+    // compile is long past any running program, so those folders are safe to remove. CheerpJ never
+    // updates a folder's own time, so each compile rewrites a marker file and the age comes from that.
+    private static final String MARKER = "last-compile";
+
+    private static void deleteOldFolders(Path parent, Path keep) throws IOException {
+        FileTime cutoff = FileTime.from(Instant.now().minus(Duration.ofDays(1)));
+        try (Stream<Path> folders = Files.list(parent)) {
+            for (Path folder : folders.toList()) {
+                Path marker = folder.resolve(MARKER);
+                FileTime lastCompile = Files.getLastModifiedTime(Files.exists(marker) ? marker : folder);
+                if (!folder.equals(keep) && lastCompile.compareTo(cutoff) < 0) delete(folder, false);
+            }
+        }
+    }
+
+    private static void compile(String classDir, String code) throws Exception {
         JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         JavacTask parser = (JavacTask) javac.getTask(Writer.nullWriter(), null, (error) -> {}, null, null,
             List.of(new Source("Main.java", code)));
@@ -120,13 +150,16 @@ public class KodigoRun {
         }
         setCandidates(String.join(",", candidates));
 
-        // Old classes stay in /files/, even after a reload, and javac would quietly compile against them.
-        try (Stream<Path> files = Files.walk(Path.of("/files/"))) {
-            files.filter((file) -> file.toString().endsWith(".class")).forEach((file) -> file.toFile().delete());
-        }
+        // Classes stay in /files/ even after a reload, and javac would quietly compile against old ones.
+        // /files/ is shared by every tab, so only this worker's own folder is cleared.
+        Path dir = Path.of(classDir);
+        Files.createDirectories(dir);
+        delete(dir, true);
+        Files.writeString(dir.resolve(MARKER), "");
+        deleteOldFolders(dir.getParent(), dir);
 
         PrintWriter errors = new PrintWriter(pageStream(true), true, StandardCharsets.UTF_8);
-        boolean compiled = javac.getTask(errors, null, null, List.of("-g", "-d", "/files/"), null,
+        boolean compiled = javac.getTask(errors, null, null, List.of("-g", "-d", classDir), null,
             List.of(new Source(fileName, code))).call();
         System.exit(compiled ? 0 : 1);
     }
@@ -169,7 +202,7 @@ public class KodigoRun {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args[0].equals("compile")) compile(args[1]);
+        if (args[0].equals("compile")) compile(args[1], args[2]);
         else run(args[1]);
     }
 }
