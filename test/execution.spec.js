@@ -26,6 +26,26 @@ public class Main {
     }
 }
 `;
+// Regression: main(int) in the public class must not hide another class's real main.
+const WRONG_MAIN_OVERLOAD = `public class Main {
+    public static void main(int x) { }
+}
+class Helper {
+    public static void main(String[] args) {
+        System.out.println("Helper main ran");
+    }
+}
+`;
+// Regression: an inherited main runs from the public class, so Main's static block runs first.
+const INHERITED_MAIN = `class Base {
+    public static void main(String[] args) {
+        System.out.println("Base main ran");
+    }
+}
+public class Main extends Base {
+    static { System.out.println("Main initialized"); }
+}
+`;
 // The marker proves the program compiled and is executing before the test checks the page or presses Stop.
 const INFINITE_LOOP = `public class Main {
     public static void main(String[] args) {
@@ -72,6 +92,18 @@ test('a normal program prints its output and exits with code 0', async () => {
   await runCode(HELLO);
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).toContainText('Hello, Kodigo!');
+});
+
+test('a main with the wrong parameters does not hide a real main in another class', async () => {
+  await runCode(WRONG_MAIN_OVERLOAD);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('Helper main ran');
+});
+
+test("an inherited main runs after the public class's static block", async () => {
+  await runCode(INHERITED_MAIN);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText(/Main initialized\s+Base main ran/);
 });
 
 test('a compile error shows the right line, a red mark, and a button that jumps to it', async () => {

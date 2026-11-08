@@ -5,6 +5,8 @@ importScripts('https://cjrtnc.leaningtech.com/5.0/loader.js');
 const send = (type, data) => postMessage({ type, ...data });
 // kodigo.jar is src/runners/KodigoRun.java, precompiled. Rebuild it when that file changes.
 const classpath = '/str/kodigo.jar:/files/';
+const wrapper = 'kodigo.KodigoRun';
+let candidates = ''; // Classes that might hold main, from the last compile. KodigoRun picks one.
 let provideLine;
 let preloaded;
 const preload = new Promise((resolve) => { preloaded = resolve; });
@@ -21,8 +23,7 @@ onmessage = async ({ data }) => {
 
 async function compile(source) {
   compilerOutput = '';
-  cheerpOSAddStringFile('/str/Main.java', source);
-  const exitCode = await cheerpjRunMain('KodigoRun', classpath, 'compile');
+  const exitCode = await cheerpjRunMain(wrapper, classpath, 'compile', source);
   const output = compilerOutput;
   compilerOutput = null;
   return { exitCode, output };
@@ -32,7 +33,7 @@ async function compileAndRun(source) {
   await warmup;
   const { exitCode, output } = await compile(source);
   send('compiled', { output });
-  return exitCode === 0 ? cheerpjRunMain('KodigoRun', classpath) : exitCode;
+  return exitCode === 0 ? cheerpjRunMain(wrapper, classpath, 'run', candidates) : exitCode;
 }
 
 (async () => {
@@ -48,11 +49,12 @@ async function compileAndRun(source) {
       if (done === total) preloaded();
     },
     natives: {
-      Java_KodigoRun_readLine: async () => {
+      Java_kodigo_KodigoRun_setCandidates: async (lib, classNames) => { candidates = classNames; },
+      Java_kodigo_KodigoRun_readLine: async () => {
         send('readLine');
         return new Promise((resolve) => { provideLine = resolve; });
       },
-      Java_KodigoRun_write: async (lib, text, isError) => {
+      Java_kodigo_KodigoRun_write: async (lib, text, isError) => {
         if (compilerOutput !== null) compilerOutput += text;
         else send('print', { text, isError });
       },
