@@ -102,6 +102,24 @@ function loadRunner() {
   );
 }
 
+// Like a real console: lines typed before the program asks wait until it does.
+let typedLines = [];
+let giveLine = null;
+
+function readInput() {
+  if (typedLines.length) return Promise.resolve(typedLines.shift());
+  status('Waiting for input…');
+  output.focusInput();
+  return new Promise((resolve) => { giveLine = resolve; });
+}
+
+function sendLine(line) {
+  if (!giveLine) return typedLines.push(line);
+  giveLine(line);
+  giveLine = null;
+  status('Running…');
+}
+
 async function run() {
   runButton.disabled = true;
   stopButton.hidden = false;
@@ -109,13 +127,15 @@ async function run() {
   clearMarkers();
   const version = editor.getModel().getVersionId();
   status('Running…');
+  typedLines = [];
+  giveLine = null;
+  output.showInput(sendLine);
   try {
     const { exitCode, stopped } = await runner.run(editor.getValue(), {
       onStdout: output.stdout,
       onStderr: output.stderr,
       onDiagnostic: (error) => showDiagnostic(error, version), // javac's own text also shows in the panel
-      // Typing input into the panel is a later item. Failing is better than waiting forever.
-      readInput: () => Promise.reject(new Error("This program asks for input, which isn't supported yet.")),
+      readInput,
     });
     if (stopped) {
       output.stderr('\nStopped.\n');
@@ -128,6 +148,7 @@ async function run() {
     output.stderr(`\n${error.message}\n`);
     loadRunner(); // The runner restarts itself after a failure.
   } finally {
+    output.hideInput(); // lines typed but never read are dropped with it
     stopButton.hidden = true;
   }
 }

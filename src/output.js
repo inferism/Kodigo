@@ -8,6 +8,32 @@ export function createOutput(box) {
   let pending = []; // [kind, text] pairs waiting for the next flush
   let timer = null;
 
+  // The program's input line. It stays the last thing in the panel, so output goes in front of it.
+  const input = document.createElement('input');
+  input.className = 'stdin-field';
+  input.hidden = true;
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.enterKeyHint = 'send';
+  input.setAttribute('autocapitalize', 'off');
+  input.setAttribute('aria-label', 'Program input');
+  box.append(input);
+  let onLine = null;
+
+  input.onkeydown = (event) => {
+    if (event.key !== 'Enter' || event.isComposing) return;
+    event.preventDefault();
+    const line = input.value;
+    input.value = '';
+    write('stdin', `${line}
+`); // stays in the panel, like a console
+    onLine(line);
+  };
+  // Clicking the panel types into the program, unless the student is selecting text to copy.
+  box.addEventListener('click', () => {
+    if (!input.hidden && getSelection().isCollapsed) input.focus();
+  });
+
   // Programs can print thousands of lines in a burst. Collect them and touch the page once per tick.
   function flush() {
     timer = null;
@@ -21,15 +47,15 @@ export function createOutput(box) {
         button.textContent = `Line ${error.line}`;
         button.onclick = onClick;
         row.append(button, ` ${error.message}\n`);
-        box.append(row);
+        input.before(row);
         size += row.textContent.length;
         continue;
       }
-      let last = box.lastElementChild;
+      let last = input.previousElementSibling;
       if (last?.className !== kind) {
         last = document.createElement('span');
         last.className = kind;
-        box.append(last);
+        input.before(last);
       }
       last.append(text);
       size += text.length;
@@ -72,7 +98,22 @@ export function createOutput(box) {
       timer = null;
       pending = [];
       size = 0;
-      box.replaceChildren();
+      box.replaceChildren(input);
+    },
+    // Shows the input line. onLine(text) gets each line when Enter is pressed.
+    showInput(callback) {
+      onLine = callback;
+      input.value = '';
+      input.hidden = false;
+    },
+    focusInput() {
+      input.focus();
+    },
+    hideInput() {
+      if (document.activeElement === input) box.focus(); // keep keyboard users in the panel
+      input.hidden = true;
+      input.value = '';
+      onLine = null;
     },
   };
 }

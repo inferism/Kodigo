@@ -58,6 +58,13 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .output button:hover { border-color: var(--accent); }
 #output { flex: 1; margin: 0; padding: 0 1rem 0.75rem; overflow: auto; font: 0.9375rem/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 #output .stderr { color: oklch(0.74 0.16 25); }
+/* What the student typed, so it reads apart from the program's own output. */
+#output .stdin { color: var(--accent); }
+/* The input sits inline after the prompt, like a console: no box, just the caret. */
+#output .stdin-field {
+  field-sizing: content; min-width: 1ch; max-width: 100%; padding: 0; border: 0; background: none;
+  font: inherit; color: var(--accent); caret-color: var(--accent); outline: none;
+}
 
 #output .diagnostic button {
   min-height: 1.75rem; padding: 0 0.5rem; font: inherit; font-size: 0.875rem; cursor: pointer;

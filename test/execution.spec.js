@@ -20,9 +20,12 @@ const MISSING_SEMICOLON = `public class Main {
 const SCANNER = `import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
         System.out.print("Name: ");
-        String name = new Scanner(System.in).nextLine();
-        System.out.println("Hi " + name);
+        String name = in.nextLine();
+        System.out.print("Age: ");
+        int age = in.nextInt();
+        System.out.println("Hi " + name + ", next year you'll be " + (age + 1));
     }
 }
 `;
@@ -195,6 +198,8 @@ test('a compile error shows the right line, a red mark, and a button that jumps 
   await expect(status()).toHaveText('Finished, exit code 1', { timeout: 60_000 });
   await expect(output()).toContainText("Main.java:3: error: ';' expected");
   await expect(page.locator('#output .diagnostic')).toContainText('Line 3');
+  // The input field must stay last, or trimming old output could remove it.
+  await expect(page.locator('#output > :last-child')).toHaveClass('stdin-field');
   await expect(page.locator('.squiggly-error').first()).toBeAttached();
 
   await page.locator('#output .diagnostic button').click();
@@ -208,14 +213,33 @@ test('a compile error shows the right line, a red mark, and a button that jumps 
   }).toBe(true);
 });
 
-test('a program that reads input fails with a clear message and Java recovers', async () => {
+test('Scanner reads lines typed in the output panel, including one typed before the prompt', async () => {
+  const field = page.getByRole('textbox', { name: 'Program input' });
   await runCode(SCANNER);
-  await expect(output()).toContainText("This program asks for input, which isn't supported yet.", { timeout: 60_000 });
-  await expect(run()).toBeEnabled({ timeout: 100_000 }); // the runner reloaded
+  // Typed while Java is still compiling, so the line has to wait for the program to ask.
+  await field.fill('Ana');
+  await field.press('Enter');
+  await expect(output()).toContainText('Age:', { timeout: 60_000 });
+  await expect(status()).toHaveText('Waiting for input…');
+  await expect(field).toBeFocused();
+  await field.fill('19');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  // An early line shows where it was typed, like a real console, so it comes before "Name:".
+  await expect(output()).toContainText(/Ana\s+Name: Age: 19\s+Hi Ana, next year you'll be 20/);
+  await expect(field).toBeHidden();
 });
 
-// Pending until typing input into the output panel exists (Phase 2).
-test.fixme('a program can read typed Scanner input', async () => {});
+test('Stop works while the program waits for input, and the next run works', async () => {
+  await runCode(SCANNER);
+  await expect(status()).toHaveText('Waiting for input…', { timeout: 60_000 });
+  await page.locator('#stop').click();
+  await expect(output()).toContainText('Stopped.');
+  await expect(page.getByRole('textbox', { name: 'Program input' })).toBeHidden();
+
+  await runCode(HELLO); // waits for Java to reload first
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+});
 
 test('an infinite loop can be stopped without freezing the page, and the next run works', async () => {
   await runCode(INFINITE_LOOP);
