@@ -82,10 +82,13 @@ async function runCode(code) {
 
 test('the editor highlights Java code', async () => {
   // Keywords, strings and plain text get different colours once Java highlighting is registered.
+  // Monaco colours the lines a moment after they appear, so keep counting until it has.
   await expect(page.locator('.view-lines .view-line').first()).toBeVisible({ timeout: 30_000 });
-  const colours = await page.locator('.view-lines .view-line span span')
-    .evaluateAll((spans) => new Set(spans.map((span) => getComputedStyle(span).color)).size);
-  expect(colours).toBeGreaterThanOrEqual(3);
+  await expect.poll(
+    () => page.locator('.view-lines .view-line span span')
+      .evaluateAll((spans) => new Set(spans.map((span) => getComputedStyle(span).color)).size),
+    { timeout: 10_000 },
+  ).toBeGreaterThanOrEqual(3);
 });
 
 test('a normal program prints its output and exits with code 0', async () => {
