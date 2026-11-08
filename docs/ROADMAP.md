@@ -47,7 +47,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 - [x] Stop button
 - [x] Type `Scanner` input directly in the output panel, like a real console, with no separate input box
-- [ ] Warn before closing or refreshing when the code has changes (the editor always starts from the starter, nothing is saved)
+- [x] Warn before closing or refreshing when the code has changes (the editor always starts from the starter, nothing is saved)
 - [ ] Starter examples
 - [ ] Shareable links that keep the code in the URL, with no backend
 - [ ] Mobile layout and light and dark themes
