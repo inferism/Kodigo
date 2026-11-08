@@ -55,19 +55,33 @@ interface Runner {
 
 ## Guide buttons
 
-Each language has a data file listing its buttons. The UI reads that file, so adding a button means adding data, not code. This shape is a draft:
+Each language has one data file, `src/guides/<id>.js`, listing its buttons. The UI reads that file, so adding a button means adding data, not code. It's a JS file rather than JSON, so a multi-line snippet is written exactly as it looks. It exports a list of groups, each with its buttons:
 
-```json
-{
-  "id": "for-loop",
-  "label": "for loop",
-  "category": "Loops",
-  "snippet": "for (int i = 0; i < 10; i++) {\n    \n}",
-  "explanation": "Repeats the code inside the braces. Here, it runs 10 times."
-}
+```js
+export default [
+  {
+    group: 'Loops',
+    buttons: [
+      {
+        label: 'for loop',
+        snippet: `for (int i = 0; i < 10; i++) {
+    $0
+}`,
+        explanation: 'Repeats the code inside the braces. i starts at 0 and goes up by 1 each time, so this runs 10 times (i = 0 to 9).',
+      },
+    ],
+  },
+];
 ```
 
-Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `explanation`.
+- **`snippet`** is inserted at the cursor, with each line given the indent of the line the cursor is on. **`$0`** marks where the cursor lands afterwards. Without it, the cursor goes to the end. This is Monaco's snippet syntax (the same as VS Code's), so the panel can use Monaco's own snippet code. Monaco reads `\$`, `\}` and `\\` as escapes, so a real `$` must be written `\$`, and a backslash right before `$`, `}` or another backslash must be doubled. For example, Java's `"\\"` would be inserted as `"\"`. Only `$0` is used for now, not numbered placeholders.
+- **`explanation`** is plain text for the dropdown arrow. The panel shows it as text, never as HTML.
+- **Order** is the order in the file: groups top to bottom, buttons in the order listed.
+- **Adding a language:** add `src/guides/<id>.js` and one line in `src/guide-map.js`, which maps a language id to a lazy import of its file, like `editor-languages.js`.
+- **Checked by** `test/guides.spec.js`, which loads every file in `guide-map.js` and checks that each group has a name and buttons, each button has a label, snippet and explanation, and each snippet has at most one `$0` and no other `$` unless it's written `\$`. The check follows Monaco's escapes, so `\$0` counts as text, while `$01` and `\\$1` are rejected as placeholders. Found by Codex's review of PR 41 and checked against Monaco's snippet parser.
+- **Not tested yet:** inserting a snippet. The compiler page imports `monaco-editor/editor/editor.api`, which doesn't include Monaco's snippet feature (`snippetController2`), so the panel task needs to import it or place the cursor itself.
+
+Java's file has only the `for` loop so far. The rest of the first set is its own roadmap item.
 
 ## Decisions
 
