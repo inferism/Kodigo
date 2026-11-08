@@ -47,7 +47,7 @@ export function createOutput(box) {
         button.textContent = `Line ${error.line}`;
         button.onclick = onClick;
         row.append(button, ` ${error.message}\n`);
-        box.append(row);
+        input.before(row);
         size += row.textContent.length;
         continue;
       }

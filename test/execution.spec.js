@@ -198,6 +198,8 @@ test('a compile error shows the right line, a red mark, and a button that jumps 
   await expect(status()).toHaveText('Finished, exit code 1', { timeout: 60_000 });
   await expect(output()).toContainText("Main.java:3: error: ';' expected");
   await expect(page.locator('#output .diagnostic')).toContainText('Line 3');
+  // The input field must stay last, or trimming old output could remove it.
+  await expect(page.locator('#output > :last-child')).toHaveClass('stdin-field');
   await expect(page.locator('.squiggly-error').first()).toBeAttached();
 
   await page.locator('#output .diagnostic button').click();
