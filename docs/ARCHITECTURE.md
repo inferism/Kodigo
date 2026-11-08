@@ -74,11 +74,11 @@ export default [
 ];
 ```
 
-- **`snippet`** is inserted at the cursor, with each line given the indent of the line the cursor is on. **`$0`** marks where the cursor lands afterwards. Without it, the cursor goes to the end. This is Monaco's snippet syntax (the same as VS Code's), so the panel can use Monaco's own snippet code, and a real `$` must be written `\$`. Only `$0` is used for now, not numbered placeholders.
+- **`snippet`** is inserted at the cursor, with each line given the indent of the line the cursor is on. **`$0`** marks where the cursor lands afterwards. Without it, the cursor goes to the end. This is Monaco's snippet syntax (the same as VS Code's), so the panel can use Monaco's own snippet code. Monaco reads `\$`, `\}` and `\\` as escapes, so a real `$` must be written `\$`, and a backslash right before `$`, `}` or another backslash must be doubled. For example, Java's `"\\"` would be inserted as `"\"`. Only `$0` is used for now, not numbered placeholders.
 - **`explanation`** is plain text for the dropdown arrow. The panel shows it as text, never as HTML.
 - **Order** is the order in the file: groups top to bottom, buttons in the order listed.
 - **Adding a language:** add `src/guides/<id>.js` and one line in `src/guide-map.js`, which maps a language id to a lazy import of its file, like `editor-languages.js`.
-- **Checked by** `test/guides.spec.js`, which loads every file in `guide-map.js` and checks that each group has a name and buttons, each button has a label, snippet and explanation, and each snippet has at most one `$0` and no other `$` unless it's written `\$`.
+- **Checked by** `test/guides.spec.js`, which loads every file in `guide-map.js` and checks that each group has a name and buttons, each button has a label, snippet and explanation, and each snippet has at most one `$0` and no other `$` unless it's written `\$`. The check follows Monaco's escapes, so `\$0` counts as text, while `$01` and `\\$1` are rejected as placeholders. Found by Codex's review of PR 41 and checked against Monaco's snippet parser.
 - **Not tested yet:** inserting a snippet. The compiler page imports `monaco-editor/editor/editor.api`, which doesn't include Monaco's snippet feature (`snippetController2`), so the panel task needs to import it or place the cursor itself.
 
 Java's file has only the `for` loop so far. The rest of the first set is its own roadmap item.
