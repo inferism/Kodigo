@@ -80,6 +80,14 @@ public class Main {
     }
 }
 `;
+// Regression: an error thrown while the wrapper loads the class must exit with code 1, as real Java does.
+const STATIC_SETUP_THROWS = `public class Main {
+    static int x = 1 / 0;
+    public static void main(String[] args) {
+        System.out.println("x is " + x);
+    }
+}
+`;
 // The marker proves the program compiled and is executing before the test checks the page or presses Stop.
 const INFINITE_LOOP = `public class Main {
     public static void main(String[] args) {
@@ -170,6 +178,13 @@ test('cleanup keeps a folder while its lock is held and deletes it once released
   await runCode(CHECKS_LOCKED_FOLDER);
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).toContainText('folder gone');
+});
+
+test('a class whose static setup throws shows the error and exits with code 1', async () => {
+  await runCode(STATIC_SETUP_THROWS);
+  await expect(status()).toHaveText('Finished, exit code 1', { timeout: 60_000 });
+  await expect(output()).toContainText('ArithmeticException');
+  await expect(output()).not.toContainText('x is');
 });
 
 test('a compile error shows the right line, a red mark, and a button that jumps to it', async () => {
