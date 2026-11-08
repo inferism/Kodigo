@@ -206,8 +206,15 @@ public class KodigoRun {
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        if (args[0].equals("compile")) compile(args[1], args[2]);
-        else run(args[1]);
+    public static void main(String[] args) {
+        try {
+            if (args[0].equals("compile")) compile(args[1], args[2]);
+            else run(args[1]);
+        } catch (Throwable e) {
+            // Left uncaught, CheerpJ ends with exit code 0 and prints the error where the page can't see it.
+            // Real Java prints the stack trace and exits with 1. This covers a user's static block too.
+            e.printStackTrace(new PrintStream(pageStream(true), true, StandardCharsets.UTF_8));
+            System.exit(1);
+        }
     }
 }
