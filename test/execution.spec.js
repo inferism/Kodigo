@@ -46,6 +46,22 @@ public class Main extends Base {
     static { System.out.println("Main initialized"); }
 }
 `;
+// Regression: a class from an earlier run must not satisfy a later program that no longer defines it.
+const DEFINES_HELPER = `public class Main {
+    public static void main(String[] args) {
+        Helper.hi();
+    }
+}
+class Helper {
+    static void hi() { System.out.println("Helper ran"); }
+}
+`;
+const USES_MISSING_HELPER = `public class Main {
+    public static void main(String[] args) {
+        Helper.hi();
+    }
+}
+`;
 // The marker proves the program compiled and is executing before the test checks the page or presses Stop.
 const INFINITE_LOOP = `public class Main {
     public static void main(String[] args) {
@@ -104,6 +120,17 @@ test("an inherited main runs after the public class's static block", async () =>
   await runCode(INHERITED_MAIN);
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).toContainText(/Main initialized\s+Base main ran/);
+});
+
+test('a class left over from an earlier run is not used by the next program', async () => {
+  await runCode(DEFINES_HELPER);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('Helper ran');
+
+  await runCode(USES_MISSING_HELPER);
+  await expect(status()).toHaveText('Finished, exit code 1', { timeout: 60_000 });
+  await expect(output()).toContainText('Main.java:3: error: cannot find symbol');
+  await expect(output()).not.toContainText('Helper ran');
 });
 
 test('a compile error shows the right line, a red mark, and a button that jumps to it', async () => {

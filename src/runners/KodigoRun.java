@@ -13,8 +13,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Modifier;
 import javax.tools.JavaCompiler;
@@ -116,6 +119,11 @@ public class KodigoRun {
             }
         }
         setCandidates(String.join(",", candidates));
+
+        // Old classes stay in /files/, even after a reload, and javac would quietly compile against them.
+        try (Stream<Path> files = Files.walk(Path.of("/files/"))) {
+            files.filter((file) -> file.toString().endsWith(".class")).forEach((file) -> file.toFile().delete());
+        }
 
         PrintWriter errors = new PrintWriter(pageStream(true), true, StandardCharsets.UTF_8);
         boolean compiled = javac.getTask(errors, null, null, List.of("-g", "-d", "/files/"), null,

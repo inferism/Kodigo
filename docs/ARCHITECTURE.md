@@ -152,7 +152,7 @@ Tested on 2026-11-06 with CheerpJ 5.0 in headless Microsoft Edge on `localhost`.
 
 - **CheerpJ must run in a Web Worker.** On the page's thread, or in an iframe, a silent loop freezes the page. A loop that prints stays responsive, which can hide this bug.
 - **Workers have no `#console` element,** so output doesn't reach the page by default.
-- **`KodigoRun.java` is a small Java wrapper that solves this.** It runs `javac` through `javax.tools`, replaces `System.in`, `out` and `err`, then starts the class it finds. It uses javac's parser to name the file after the public class and list the top-level classes, with the public class first. After compiling, it uses reflection to run the first class in that list with a real `public static void main(String[])`. That counts an inherited `main` and skips overloads like `main(int)`. The chosen class is initialised first, so its static blocks run before `main`. It lives in the `kodigo` package so a user class called `KodigoRun` doesn't clash with it. Its native methods are written in JavaScript through the `natives` option of `cheerpjInit`.
+- **`KodigoRun.java` is a small Java wrapper that solves this.** It runs `javac` through `javax.tools`, replaces `System.in`, `out` and `err`, then starts the class it finds. It uses javac's parser to name the file after the public class and list the top-level classes, with the public class first. After compiling, it uses reflection to run the first class in that list with a real `public static void main(String[])`. That counts an inherited `main` and skips overloads like `main(int)`. The chosen class is initialised first, so its static blocks run before `main`. Before each compile it deletes the old `.class` files in `/files/`, because CheerpJ keeps that folder in the browser's storage, even across reloads, and `javac` would otherwise compile against classes the program no longer defines. It lives in the `kodigo` package so a user class called `KodigoRun` doesn't clash with it. Its native methods are written in JavaScript through the `natives` option of `cheerpjInit`.
 - **`stop()` replaces the worker,** and the runner loads Java again on its own. The UI should treat that as a short reload.
 - **Real load progress comes from `preloadProgress`.** With the default `status`, `cheerpjInit` finishes before the preload does, so `worker.js` waits for 100% before it reports ready. Adding `status: 'none'` makes `cheerpjInit` hang after 100%. The docs mention neither, so these are test results.
 
@@ -196,7 +196,6 @@ Each setup below ran 4 times with an empty cache. "Total" is the time from openi
 - **Stack traces:** They show `Unknown Source` instead of line numbers, even with `-g`.
 - **Stalled downloads:** `load()` has no timeout, so a download that stalls without failing leaves the percent stuck. A failed download does reject.
 - **Warm-up after ready:** Warm-up can still be running when `load()` resolves, so an early Run can wait on it. How long this takes hasn't been measured in a visible tab.
-- **Old class files:** Compiled classes stay in `/files/` after a run, even after a reload. A program that uses a class it no longer defines still compiles against the old copy instead of giving an error.
 - **Other browsers:** Firefox, Safari and phones weren't tested.
 
 ## Open questions
