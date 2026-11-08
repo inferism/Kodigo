@@ -2,7 +2,6 @@ package kodigo;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.JavacTask;
 import java.io.InputStream;
@@ -14,8 +13,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Modifier;
 import javax.tools.JavaCompiler;
@@ -29,7 +28,7 @@ public class KodigoRun {
     // These are implemented in JavaScript through cheerpjInit's natives option.
     private static native String readLine();
     private static native void write(String text, boolean isError);
-    private static native void setMainClass(String name);
+    private static native void setCandidates(String classNames);
 
     private static OutputStream pageStream(boolean isError) {
         return new OutputStream() {
@@ -91,12 +90,6 @@ public class KodigoRun {
         }
     }
 
-    private static boolean hasMain(ClassTree type) {
-        return type.getMembers().stream().anyMatch((member) -> member instanceof MethodTree method
-            && method.getName().contentEquals("main")
-            && method.getModifiers().getFlags().containsAll(Set.of(Modifier.PUBLIC, Modifier.STATIC)));
-    }
-
     // Uses javac's own parser, which isn't fooled by comments, strings or nested classes.
     // Code with syntax errors is fine here: the real compile below reports them.
     private static void compile(String code) throws Exception {
@@ -105,22 +98,24 @@ public class KodigoRun {
             List.of(new Source("Main.java", code)));
         CompilationUnitTree unit = parser.parse().iterator().next();
 
+        // The classes that might hold main, public class first. run() checks them once they're compiled.
         String fileName = "Main.java";
-        String mainClass = "";
+        String packagePrefix = unit.getPackageName() == null ? "" : unit.getPackageName() + ".";
+        List<String> candidates = new ArrayList<>();
         boolean foundPublic = false;
         for (Tree tree : unit.getTypeDecls()) {
-            if (!(tree instanceof ClassTree type)) continue;
-            boolean isPublic = type.getModifiers().getFlags().contains(Modifier.PUBLIC);
-            // After a syntax error the name can be "<error>", which isn't a usable file name.
-            if (isPublic && !foundPublic && SourceVersion.isIdentifier(type.getSimpleName())) {
+            // After a syntax error the name can be "<error>", which isn't a usable name.
+            if (!(tree instanceof ClassTree type) || !SourceVersion.isIdentifier(type.getSimpleName())) continue;
+            String name = packagePrefix + type.getSimpleName();
+            if (type.getModifiers().getFlags().contains(Modifier.PUBLIC) && !foundPublic) {
                 foundPublic = true;
                 fileName = type.getSimpleName() + ".java";
+                candidates.add(0, name);
+            } else {
+                candidates.add(name);
             }
-            // The public class wins if it has a main method. Otherwise, the first class that has one.
-            if (hasMain(type) && (mainClass.isEmpty() || isPublic)) mainClass = type.getSimpleName().toString();
         }
-        if (unit.getPackageName() != null && !mainClass.isEmpty()) mainClass = unit.getPackageName() + "." + mainClass;
-        setMainClass(mainClass);
+        setCandidates(String.join(",", candidates));
 
         PrintWriter errors = new PrintWriter(pageStream(true), true, StandardCharsets.UTF_8);
         boolean compiled = javac.getTask(errors, null, null, List.of("-g", "-d", "/files/"), null,
@@ -128,20 +123,39 @@ public class KodigoRun {
         System.exit(compiled ? 0 : 1);
     }
 
-    private static void run(String mainClass) throws Exception {
+    // Reflection sees the compiled classes as Java does, so it counts inherited mains, matches the exact
+    // signature in any spelling, and skips overloads like main(int). Loading doesn't run static blocks yet.
+    private static Class<?> findMainClass(String candidates) {
+        for (String name : candidates.split(",")) {
+            try {
+                Class<?> type = Class.forName(name, false, KodigoRun.class.getClassLoader());
+                Method main = type.getMethod("main", String[].class);
+                if (java.lang.reflect.Modifier.isStatic(main.getModifiers()) && main.getReturnType() == void.class) return type;
+            } catch (ClassNotFoundException | NoSuchMethodException | LinkageError e) {
+                // Not runnable, so try the next class.
+            }
+        }
+        return null;
+    }
+
+    private static void run(String candidates) throws Exception {
         System.setIn(new PageInput());
         System.setOut(new PrintStream(pageStream(false), true, "UTF-8"));
         System.setErr(new PrintStream(pageStream(true), true, "UTF-8"));
         // Reflection, because this class is compiled before the user's class exists.
+        Class<?> mainClass = findMainClass(candidates);
+        if (mainClass == null) {
+            System.err.println("No main method found. To run, add: public static void main(String[] args)");
+            System.exit(1);
+        }
         try {
-            Method main = Class.forName(mainClass).getMethod("main", String[].class);
+            // Initialising the chosen class first runs its static blocks, even when main is inherited.
+            Class.forName(mainClass.getName(), true, KodigoRun.class.getClassLoader());
+            Method main = mainClass.getMethod("main", String[].class);
             main.setAccessible(true); // This package can't otherwise call a class that isn't public.
             main.invoke(null, (Object) new String[0]);
         } catch (InvocationTargetException e) {
             e.getCause().printStackTrace();
-            System.exit(1);
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
-            System.err.println("No main method found. To run, add: public static void main(String[] args)");
             System.exit(1);
         }
     }

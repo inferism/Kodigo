@@ -6,7 +6,7 @@ const send = (type, data) => postMessage({ type, ...data });
 // kodigo.jar is src/runners/KodigoRun.java, precompiled. Rebuild it when that file changes.
 const classpath = '/str/kodigo.jar:/files/';
 const wrapper = 'kodigo.KodigoRun';
-let mainClass = ''; // The class to run, as found by the last compile.
+let candidates = ''; // Classes that might hold main, from the last compile. KodigoRun picks one.
 let provideLine;
 let preloaded;
 const preload = new Promise((resolve) => { preloaded = resolve; });
@@ -33,7 +33,7 @@ async function compileAndRun(source) {
   await warmup;
   const { exitCode, output } = await compile(source);
   send('compiled', { output });
-  return exitCode === 0 ? cheerpjRunMain(wrapper, classpath, 'run', mainClass) : exitCode;
+  return exitCode === 0 ? cheerpjRunMain(wrapper, classpath, 'run', candidates) : exitCode;
 }
 
 (async () => {
@@ -49,7 +49,7 @@ async function compileAndRun(source) {
       if (done === total) preloaded();
     },
     natives: {
-      Java_kodigo_KodigoRun_setMainClass: async (lib, name) => { mainClass = name; },
+      Java_kodigo_KodigoRun_setCandidates: async (lib, classNames) => { candidates = classNames; },
       Java_kodigo_KodigoRun_readLine: async () => {
         send('readLine');
         return new Promise((resolve) => { provideLine = resolve; });
