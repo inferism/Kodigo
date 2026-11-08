@@ -2,7 +2,7 @@
 
 A free online compiler with built-in guides, aimed at students. Users pick a language and build what they want with guide buttons: each button inserts a code snippet, such as a `for` loop, and has a dropdown arrow that explains it. Java comes first, then more languages one at a time. The name is Filipino for "code" and also "cheat sheet".
 
-**Status:** Phase 0 passed, on localhost and on Vercel. Phase 1 is in progress. See [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status:** Phases 0 and 1 are done, and the site is live on Vercel. Phase 2 is next. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Read when relevant
 

@@ -18,8 +18,9 @@ Vercel only serves the static files. It never sees user code.
 
 ## Pages
 
-- **Home:** The title and short description, with the available languages below when you scroll. Java is the only one for now.
-- **Compiler:** The editor, output panel and guide buttons for the chosen language.
+- **Home** (`index.html`): The title and short description, with the available languages below when you scroll. The languages come from the list in `src/languages.js`, one `{ id, label, blurb, href }` entry each, so adding a language doesn't change the page's code. Java is the only one for now.
+- **Compiler** (`compiler/index.html`): The editor, output panel and guide buttons for the chosen language. The home page links to `/compiler/?lang=java`, where `lang` is the runner's `id`. `src/compiler.js` reads it and falls back to the first language when it's missing or unknown. The editor, the output panel, the Run and Stop buttons and the CheerpJ credit are in. The guide buttons are not built yet. `src/compiler.js` picks the runner from `src/runner-map.js` and the editor's highlighting from `src/editor-languages.js` (one line per language in each, so `compiler.js` itself names no language), starts loading it when the page opens, and shows the percent from `load(onProgress)` in the toolbar. Run is disabled until Java is ready and while a program runs. Stop shows only while a program runs. After a Stop, or after a run fails, the runner restarts itself, so the page calls `load()` again and Run waits for it. Compile errors show as javac's own text in the output panel, followed by one row per error with a "Line N" button. The runner's `onDiagnostic` gives `{ line, message }`, and the page uses it for the rows and for red marks in the editor, so the UI never parses javac's text. Clicking a button moves the cursor to that line and scrolls it into view. The marks clear on the next run or edit, and are skipped if the code changed after Run was clicked, because compiling takes a few seconds. The runner gives line numbers only, so the whole line is marked. A program that reads input fails with a clear message, because typing input is a Phase 2 item. The editor sits on top, with the output panel under it (about 30% of the height). `src/output.js` gives the panel `stdout(text)`, `stderr(text)` and `clear()`, which match the runner contract's `onStdout` and `onStderr`. It shows both streams in one ordered stream, with stderr in red, and always as plain text. It collects output and updates the page once per 16 ms, because checking the scroll position on every write made a 30,000-line burst freeze the tab. It keeps about the last 200,000 characters, so a program that prints forever can't grow the page without limit. Revisit that cap once Stop exists.
+- **CheerpJ credit:** CheerpJ's license needs a visible "Built with CheerpJ" credit. It's in the home page footer, and the compiler page needs the same line.
 
 ## Runner contract
 
@@ -76,9 +77,10 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 | Java first with CheerpJ | Java is the owner's chosen starting language, and CheerpJ runs it with no card. Tested on localhost and on a Vercel preview deployment. |
 | Accept a 15 to 36 second first run | The owner accepted this on 2026-11-06, with later runs taking about 3 seconds. |
 | Run CheerpJ in a Web Worker | It's the only tested way to stop a silent infinite loop without freezing the page. |
-| Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. |
+| Vercel deploys are done by the owner | The owner handles deployment. Claude prepares the code and says what to check. Vercel redeploys production by itself on every merge to `main`, which the owner confirmed on 2026-11-07 when the merge of PR 21 appeared as a Ready production deployment. |
 | Vercel Hobby for hosting | It's free with no card, deploys from a private repo, and allows custom HTTP headers. Hobby is for non-commercial use, so monetizing would mean revisiting it. |
 | Private repo for now | The owner's choice. Keep this in mind for CheerpJ's license, because a private repo can't rely on any open-source terms. |
+| Guide panel on the right of the editor | The owner's choice, so the editor keeps most of the space. On a laptop it's a fixed width of about 14 to 18rem that can collapse, not a percentage, because 10% is too narrow for labels like `System.out.print` and a dropdown arrow. On a phone it becomes a drawer at the bottom. Phase 3 builds it, and the compiler page's layout already leaves room for it. |
 | Guide buttons are data | New buttons and languages need no UI changes. |
 | One runner per language | Languages can be added one at a time without touching the UI. |
 | Monaco for the editor | It's free, it's the editor behind VS Code, and it saves building an editor. |
@@ -90,7 +92,7 @@ Clicking the button inserts `snippet` at the cursor. The dropdown arrow shows `e
 
 Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on a production build. Pin both versions.
 
-- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. This part wasn't tested.
+- **Pages:** Use one HTML file per page, so the home page doesn't download Monaco. Vite needs each page listed in `build.rolldownOptions.input` in `vite.config.js`. Tested on 2026-11-07 with the home page and a throwaway `compiler/index.html` that imported Monaco with Java. The build made a separate JS and CSS bundle for each page, and the compiler page came out at `dist/compiler/index.html`. The home page's HTML and the three files it loads (about 1.3 kB of JS and 2.8 kB of CSS, plus a small shared polyfill) don't mention Monaco, and the browser's network log showed no Monaco request. `vite.config.js` now lists both pages, and a listed page that doesn't exist fails the build, so add a page's entry in the same change that creates it. The real compiler page (built 2026-11-07) gave the same result: the home page loads only its own files and a shared 0.9 kB `languages` chunk, with no Monaco request on the dev server or the production build.
 - **Monaco imports:** Load only what a language needs. Importing `monaco-editor` itself pulls in every language.
 
   ```js
@@ -102,10 +104,22 @@ Tested on 2026-11-06 with Vite 8.3.6 and Monaco 0.57.0, on the dev server and on
   ```
 
   Older guides use `esm/vs/basic-languages`, which no longer has the Java files.
-- **Size:** With Java only, Monaco adds about 2.7 MB of JS (714 kB gzipped), plus a 304 kB worker and 99 kB of CSS.
+- **Size:** With Java only, Monaco adds about 2.7 MB of JS (714 kB gzipped), plus a 304 kB worker and 99 kB of CSS. The compiler page's production build matched: 2,705 kB of JS (695 kB gzipped), the 304 kB worker and 100 kB of CSS.
 - **CheerpJ worker:** `worker.js`, `kodigo.jar` and `preload.json` live in `public/runners/java/`, so Vite copies them unchanged and the page starts the worker with `new Worker('/runners/java/worker.js')`. The worker needs `importScripts`, which module workers don't have, so don't import it through Vite.
 - **Testing the runner:** Run `npm run dev` and open `/test/runner.html`. That page exists only on the dev server.
+- **Licence notices:** The build strips the copyright text from the bundled code, and Monaco's MIT licence requires it in what we ship, so `vite.config.js` writes two files into `dist/`, served at `/third-party-licenses.txt` and `/third-party-notices-monaco.txt`. The first is Vite's own list of bundled packages (`build.license`), which only sees Monaco itself. The second is a small plugin that copies Monaco's `ThirdPartyNotices.txt` and DOMPurify's licence from `node_modules` at build time, because Monaco vendors its own copies of those libraries. We use DOMPurify under its Apache License 2.0 option. Found by Codex's phase-end review on 2026-11-07. Checked on a production build and `vite preview`: both files are served as plain text. After adding a dependency that gets bundled, check that its notice shows up. Not covered: CheerpJ, which loads from its CDN and isn't bundled, so its credit in the footer is what the Community licence asks for.
 - **DOMPurify warning:** `npm audit` reports a critical issue in Monaco 0.57.0's DOMPurify 3.4.15, and Monaco has its own built-in copy, so an npm override wouldn't change it. The listed issues depend on `IN_PLACE`, `SAFE_FOR_TEMPLATES` or `PARSER_MEDIA_TYPE`, and a search of Monaco's sanitizer found none of them. Don't run `npm audit fix --force`: it installs Monaco 0.56.0, which has an older DOMPurify. Update when a Monaco release includes 3.4.17 or later, and don't pass untrusted Markdown to Monaco until then.
+
+## Tests
+
+Tested on 2026-11-07 with Playwright 1.65.0 (Apache-2.0, free, no account) in Chromium. Run `npx playwright install chromium` once, then `npm test`.
+
+- **What it covers:** `test/execution.spec.js` checks that the editor highlights Java, then runs the four execution cases from CLAUDE.md against the production build: a normal program, a compile error (line number, red mark, and the Line button that jumps to it), a `Scanner` program (today's clean failure, with a pending `test.fixme` for real typed input until Phase 2), and an infinite loop that Stop ends while the page stays responsive, followed by a run that works. The loop program prints a marker first, and the test waits for it, so Stop is never pressed while the program is still compiling.
+- **How it works:** `playwright.config.js` builds the site and serves it with `vite preview` on port 4174, one test at a time, with one retry and 2-minute timeouts. The tests share one page, so Java loads once. Code goes into the editor by pasting from the clipboard, because typing fights Monaco's auto-closing brackets, and the page has no test-only hooks.
+- **Results:** The suite took 36 to 53 seconds. It passed 6 runs out of 6, 5 of them with retries off, all with CheerpJ's files already cached. A cold first run wasn't measured. Breaking the code on purpose (Stop doing nothing, the Line rows never added, the red marks never set) made the matching test fail each time.
+- **Needs internet,** because CheerpJ loads from its CDN. A slow or stalled download can fail a run for reasons unrelated to our code, so rerun before suspecting a bug.
+- **No GitHub Actions workflow yet,** so the suite only runs when someone runs `npm test`. Adding one is a separate task. It needs no secrets, but check the fork-PR settings first, since the repo will go public.
+- **Still untested:** Firefox, Safari, phones, and the home page.
 
 ## CheerpJ license
 

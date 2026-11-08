@@ -30,14 +30,14 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 **Model:** Sonnet 5.5, except Opus 5.5 for choosing the build tool and for the runner contract and Java runner. Those decisions shape everything after them.
 
 - [x] Choose the build tool and UI framework, if any are needed
-- [ ] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
-- [ ] Monaco editor with Java highlighting
+- [x] Home page with the title and short description, and a language section below it when you scroll (Java only for now)
+- [x] Monaco editor with Java highlighting
 - [x] Define the runner contract and build the Java runner
-- [ ] Output panel with separate stdout and stderr
-- [ ] Run button and loading progress for the first download
-- [ ] Compile errors with clickable line numbers
-- [ ] Deploy to Vercel from the private repo
-- [ ] Playwright test covering the four execution cases in CLAUDE.md
+- [x] Output panel with separate stdout and stderr
+- [x] Run button and loading progress for the first download
+- [x] Compile errors with clickable line numbers
+- [x] Deploy to Vercel from the private repo
+- [x] Playwright test covering the four execution cases in CLAUDE.md
 
 ## Phase 2: Usable every day
 
@@ -45,7 +45,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 **Model:** Sonnet 5.5, except Opus 5.5 for the stop button and `Scanner` input. Both depend on how CheerpJ behaves.
 
-- [ ] Stop button
+- [x] Stop button
 - [ ] Type `Scanner` input directly in the output panel, like a real console, with no separate input box
 - [ ] Save the current code in the browser
 - [ ] Starter examples

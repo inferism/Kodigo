@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Kodigo: compiler</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/src/compiler.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">Kodigo</a>
+    <span id="language-label"></span>
+  </header>
+  <main>
+    <div class="toolbar">
+      <button type="button" id="run" disabled>Run</button>
+      <button type="button" id="stop" hidden>Stop</button>
+      <progress id="load-progress" max="100" hidden></progress>
+      <span id="status" role="status"></span>
+    </div>
+    <div id="editor" aria-label="Code editor"></div>
+    <section class="output" aria-labelledby="output-title">
+      <div class="output-bar">
+        <h2 id="output-title">Output</h2>
+        <button type="button" id="clear-output">Clear</button>
+      </div>
+      <pre id="output" role="log" tabindex="0"></pre>
+    </section>
+  </main>
+  <footer>
+    <p>Built with <a href="https://cheerpj.com" rel="noopener">CheerpJ</a></p>
+  </footer>
+  <script type="module" src="/src/compiler.js"></script>
+</body>
+</html>
