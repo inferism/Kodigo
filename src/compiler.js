@@ -1,6 +1,8 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import { editorLanguages } from './editor-languages.js';
+import { guides } from './guide-map.js';
+import { showGuide } from './guide-panel.js';
 import { languages } from './languages.js';
 import { createOutput } from './output.js';
 import { runners } from './runner-map.js';
@@ -66,6 +68,8 @@ function showDiagnostic(error, version) {
     editor.focus();
   });
 }
+
+showGuide(document.getElementById('guide'), guides[language.id]); // not awaited: the guide never delays the editor or the runner
 
 const output = createOutput(document.getElementById('output'));
 document.getElementById('clear-output').onclick = output.clear;
