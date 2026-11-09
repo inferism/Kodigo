@@ -66,9 +66,10 @@ export default [
       },
       {
         label: 'read an int',
-        snippet: 'int value = in.nextInt();$0',
+        snippet: `int value = in.nextInt();
+in.nextLine(); // finishes the line, so a later nextLine() waits for new text$0`,
         explanation:
-          'Waits until you type a whole number in the output panel, then keeps it in "value". If you type something that is not a whole number, the program stops with an error. It needs the Scanner button first.',
+          'Waits until you type a whole number in the output panel, then keeps it in "value". If you type something that is not a whole number, the program stops with an error. The second line is needed: nextInt() reads only the number and leaves the Enter you pressed waiting, so without it a following "read a line" would get empty text. It needs the Scanner button first.',
       },
     ],
   },

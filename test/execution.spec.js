@@ -297,3 +297,27 @@ test('every Java guide snippet compiles', async () => {
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).not.toContainText('error');
 });
+
+// A number read followed by a line read is the classic Scanner trap, so test the real buttons with real input.
+test('the Scanner buttons read a number and then a line of text correctly', async () => {
+  const buttons = (await guides.java()).default.flatMap((g) => g.buttons);
+  const snippet = (label) => buttons.find((b) => b.label === label).snippet.replace('$0', '');
+  await runCode(`public class Main {
+    public static void main(String[] args) {
+${snippet('Scanner')}
+${snippet('read an int')}
+${snippet('read a line')}
+System.out.println("[" + value + "][" + line + "]");
+    }
+}
+`);
+  const field = page.getByRole('textbox', { name: 'Program input' });
+  await expect(status()).toHaveText('Waiting for input…', { timeout: 60_000 });
+  await field.fill('7');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Waiting for input…'); // the line read must wait for text, not take the leftover Enter
+  await field.fill('hello world');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('[7][hello world]');
+});

@@ -83,7 +83,7 @@ export default [
 
 The panel is `src/guide-panel.js`: it draws the groups and buttons from this data, with a collapse toggle, and passes each click to the insert function (see above). On a phone it stacks under the editor, collapsed, until the mobile-layout item makes it a drawer.
 
-Java's file has 16 buttons in 6 groups. They are templates that fit together: `number`, `in` and `numbers` are the names that the variable, Scanner and array buttons create, and `Scanner` uses the full name `java.util.Scanner` so it needs no import. `$0` sits where removing it still compiles, so the test can compile the whole set. A snippet that starts with `static` is a method and goes in the class, outside `main`. `test/execution.spec.js` compiles every snippet in one program (inside `if (false)`, so nothing waits for input or loops).
+Java's file has 16 buttons in 6 groups. They are templates that fit together: `number`, `in` and `numbers` are the names that the variable, Scanner and array buttons create, and `Scanner` uses the full name `java.util.Scanner` so it needs no import. `$0` sits where removing it still compiles, so the test can compile the whole set. `read an int` also inserts `in.nextLine();`, because `nextInt()` leaves the Enter behind and a following `nextLine()` would otherwise return empty text. A snippet that starts with `static` is a method and goes in the class, outside `main`. `test/execution.spec.js` compiles every snippet in one program (inside `if (false)`, so nothing waits for input or loops).
 
 ## Decisions
 
