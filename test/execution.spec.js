@@ -293,7 +293,8 @@ test('an infinite loop can be stopped without freezing the page, and the next ru
 test('every Java guide snippet compiles', async () => {
   const buttons = (await guides.java()).default.flatMap((g) => g.buttons);
   const code = (isMethod) => buttons.map((b) => b.snippet.replace('$0', '')).filter((s) => s.startsWith('static') === isMethod).join('\n');
-  await runCode(`public class Main {\n${code(true)}\npublic static void main(String[] args) {\nif (false) {\n${code(false)}\n}\n}\n}\n`);
+  const imports = [...new Set(buttons.flatMap((x) => x.imports ?? []))].join('\n');
+  await runCode(`${imports}\npublic class Main {\n${code(true)}\npublic static void main(String[] args) {\nif (false) {\n${code(false)}\n}\n}\n}\n`);
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).not.toContainText('error');
 });
@@ -302,7 +303,9 @@ test('every Java guide snippet compiles', async () => {
 test('the Scanner buttons read a number and then a line of text correctly', async () => {
   const buttons = (await guides.java()).default.flatMap((g) => g.buttons);
   const snippet = (label) => buttons.find((b) => b.label === label).snippet.replace('$0', '');
-  await runCode(`public class Main {
+  const imports = buttons.find((b) => b.label === 'Scanner').imports.join('\n');
+  await runCode(`${imports}
+public class Main {
     public static void main(String[] args) {
 ${snippet('Scanner')}
 ${snippet('read an int')}
@@ -334,6 +337,7 @@ for (const [name, code, expected] of [
   ['a method with no return', wrap('static int f() { }', ''), 'promises to give back a value'],
   ['a long put into an int', wrap('', 'long big = 5;\nint n = big;'), 'too big for the smaller type'],
   ['a statement above the class', 'int x = 1;\n' + wrap('', ''), 'not inside a class'],
+  ['a class named like an import', 'import java.util.Scanner;\nclass Scanner {\n    public static void main(String[] args) { }\n}\n', 'Rename your class'],
   ['a Java method used without an object', wrap('', 'String s = java.util.Scanner.nextLine();'), 'call it on an object you made'],
 ]) {
   test(`a compile error for ${name} gets a plain-English explanation`, async () => {
