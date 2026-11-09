@@ -318,17 +318,18 @@ export function placeImports(source, imports) {
     return end;
   };
 
-  const word = /[\w$]+/y;
+  // A whole Java identifier, so "importé" is one word and not the keyword import followed by an accent.
+  const word = /[\p{L}\p{Nd}\p{Nl}\p{Sc}\p{Pc}\p{Mn}\p{Mc}]+/uy;
   let i = 0;
   while (i < source.length) {
     const c = source[i];
+    word.lastIndex = i; // a sticky regex starts where lastIndex says, so set it every time
     if (source.startsWith('//', i)) i = skip(i + 2, '\n');
     else if (source.startsWith('/*', i)) i = skip(i + 2, '*/');
     else if (source.startsWith('"""', i)) i = skip(i + 3, '"""', { escapes: true });
     else if (c === '"' || c === "'") i = skip(i + 1, c, { escapes: true, lineOnly: true });
-    else if (word.test(c)) {
-      word.lastIndex = i;
-      const name = word.exec(source)[0];
+    else if (word.test(source)) {
+      const name = source.slice(i, word.lastIndex);
       if (name === 'import' || name === 'package') {
         const end = skip(i + name.length, ';');
         if (name === 'import') {

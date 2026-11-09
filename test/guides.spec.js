@@ -88,6 +88,11 @@ for (const [name, source, expected] of [
   ['a wildcard import does not count as the specific one', 'import java.util.*;\nclass A {}', add(2)],
   ['a static import is a different import', 'import static java.lang.Math.*;\nclass A {}', add(2)],
   ['an empty file', '', add(1, `${scanner}\n\n`)],
+  ['an identifier that starts with the word import is not an import', 'class A { void m() { int importé = 1; } }', add(1, `${scanner}\n\n`)],
+  ['an identifier that ends with the word import is not an import', 'class A { void m() { int éimport = 1; } }', add(1, `${scanner}\n\n`)],
+  ['an identifier that starts with the word package is not a package line', 'class A { void m() { int packageé = 1; } }', add(1, `${scanner}\n\n`)],
+  ['two imports with a comment between them on one line are both seen', 'import java.util.List;/**/import java.io.File;\nclass A {}', add(2)],
+  ['the second import is the one wanted, after a comment', `import java.util.List;/**/${scanner}\nclass A {}`, null],
 ]) {
   test(`java placeImports: ${name}`, () => {
     expect(placeImports(source, wanted)).toEqual(expected);
