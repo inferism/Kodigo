@@ -81,7 +81,7 @@ export default [
 - **Checked by** `test/guides.spec.js`, which loads every file in `guide-map.js` and checks that each group has a name and buttons, each button has a label, snippet and explanation, and each snippet has at most one `$0` and no other `$` unless it's written `\$`. The check follows Monaco's escapes, so `\$0` counts as text, while `$01` and `\\$1` are rejected as placeholders. Found by Codex's review of PR 41 and checked against Monaco's snippet parser.
 - **Inserting:** clicking a button calls `insertSnippet` in `src/compiler.js`, which focuses the editor and passes the snippet to Monaco's snippet controller. The compiler page imports `monaco-editor/editor/contrib/snippet/browser/snippetController2` for this, because `editor.api` leaves it out. Monaco gives each new line the indent of the cursor's line and moves the cursor to `$0`. `test/guide-panel.spec.js` checks the text, the cursor spot and the indent in a real browser.
 
-The panel is `src/guide-panel.js`: it draws the groups and buttons from this data, with a collapse toggle, and the buttons do nothing yet. On a phone it stacks under the editor, collapsed, until the mobile-layout item makes it a drawer.
+The panel is `src/guide-panel.js`: it draws the groups and buttons from this data, with a collapse toggle, and passes each click to the insert function (see above). On a phone it stacks under the editor, collapsed, until the mobile-layout item makes it a drawer.
 
 Java's file has only the `for` loop so far. The rest of the first set is its own roadmap item.
 
