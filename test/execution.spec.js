@@ -1,6 +1,7 @@
 // The four execution cases from CLAUDE.md, run against the production build.
 // Needs internet: CheerpJ loads from its CDN. One page is shared, so Java loads once (Stop reloads it).
 import { test, expect } from '@playwright/test';
+import { guides } from '../src/guide-map.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -284,4 +285,15 @@ test('an infinite loop can be stopped without freezing the page, and the next ru
 
   await runCode(HELLO); // waits for Java to reload first
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+});
+
+// A broken snippet would teach students something wrong, so compile every Java guide button.
+// They build on each other (number, in, numbers), so they go into main in file order. The if (false)
+// keeps the program from waiting for input or looping. A snippet that starts with "static" is a method.
+test('every Java guide snippet compiles', async () => {
+  const buttons = (await guides.java()).default.flatMap((g) => g.buttons);
+  const code = (isMethod) => buttons.map((b) => b.snippet.replace('$0', '')).filter((s) => s.startsWith('static') === isMethod).join('\n');
+  await runCode(`public class Main {\n${code(true)}\npublic static void main(String[] args) {\nif (false) {\n${code(false)}\n}\n}\n}\n`);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).not.toContainText('error');
 });
