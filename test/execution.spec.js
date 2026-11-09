@@ -352,3 +352,22 @@ test('a compile error with no known explanation shows only javac\'s message', as
   await expect(page.locator('#output .diagnostic').first()).toContainText('character literal', { timeout: 60_000 });
   await expect(page.locator('#output .diagnostic').first().locator('.explain')).toHaveCount(0); // a later error on the same line may have one
 });
+
+// A character whose bytes are written one at a time (System.out.write) must not come out as replacement marks.
+// The Java source uses \u escapes so this file stays plain ASCII.
+test('multi-byte characters written byte by byte are not corrupted', async () => {
+  await runCode(`public class Main {
+    public static void main(String[] args) throws Exception {
+        byte[] bytes = "\u00e9\uD83D\uDE42".getBytes("UTF-8");
+        for (byte b : bytes) System.out.write(b);
+        System.out.println();
+        System.out.println("\u00e9\uD83D\uDE42");
+        for (byte b : bytes) System.err.write(b);
+        System.err.println();
+    }
+}
+`);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText(/é\u{1F642}\s+é\u{1F642}\s+é\u{1F642}/u);
+  await expect(output()).not.toContainText('�');
+});
