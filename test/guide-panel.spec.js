@@ -8,7 +8,7 @@ test('shows the groups and buttons from the language guide', async ({ page }) =>
   await page.goto(url);
   const panel = page.locator('#guide');
   await expect(panel.getByRole('heading', { name: 'Loops' })).toBeVisible();
-  await expect(panel.getByRole('button', { name: 'for loop' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'for loop', exact: true })).toBeVisible();
   await expect(page.locator('#editor')).toBeVisible();
 });
 
@@ -16,7 +16,7 @@ test('collapses and expands', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(url);
   const toggle = page.getByRole('button', { name: 'Guide' });
-  const button = page.getByRole('button', { name: 'for loop' });
+  const button = page.getByRole('button', { name: 'for loop', exact: true });
 
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   const open = await page.locator('#guide').boundingBox();
@@ -35,7 +35,7 @@ test('starts collapsed on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto(url);
   await expect(page.getByRole('button', { name: 'Guide' })).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.getByRole('button', { name: 'for loop' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'for loop', exact: true })).toBeHidden();
 });
 
 // Replaces the editor's text. Pasting avoids Monaco's auto-closing brackets, which typing triggers.
@@ -55,7 +55,7 @@ test.describe('inserting a snippet', () => {
     await page.goto(url);
     await setCode(page, 'x');
     await page.keyboard.press('Backspace'); // pasting an empty string would change nothing
-    await page.getByRole('button', { name: label }).click();
+    await page.getByRole('button', { name: label, exact: true }).click();
     await page.keyboard.type('X'); // lands where $0 was
     await expect.poll(() => editorText(page)).toBe(snippet.replace('$0', 'X'));
   });
@@ -67,9 +67,41 @@ test.describe('inserting a snippet', () => {
     await page.keyboard.press('ControlOrMeta+Home');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('End'); // end of the indented blank line
-    await page.getByRole('button', { name: label }).click();
+    await page.getByRole('button', { name: label, exact: true }).click();
     // The first line goes after the cursor's own 4 spaces. Every later line gets 4 more.
     const indented = snippet.replace('$0', '').split('\n').map((line, i) => (i ? '    ' + line : line));
     await expect.poll(() => editorText(page)).toBe(`if (a) {\n    ${indented.join('\n')}\n}`);
+  });
+});
+
+test.describe('explanations', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('the arrow opens and closes the explanation without inserting anything', async ({ page }) => {
+    const { label, explanation } = (await guides.java()).default[0].buttons[0];
+    await page.goto(url);
+    const before = await editorText(page);
+    const arrow = page.getByRole('button', { name: `Explain ${label}` });
+    const text = page.getByText(explanation, { exact: true });
+
+    await expect(text).toBeHidden();
+    await arrow.click();
+    await expect(arrow).toHaveAttribute('aria-expanded', 'true');
+    await expect(text).toBeVisible();
+    await arrow.click();
+    await expect(arrow).toHaveAttribute('aria-expanded', 'false');
+    await expect(text).toBeHidden();
+    expect(await editorText(page)).toBe(before);
+  });
+
+  test('the label still inserts the snippet while the explanation is open', async ({ page }) => {
+    const { snippet, label } = (await guides.java()).default[0].buttons[0];
+    await page.goto(url);
+    await page.getByRole('button', { name: `Explain ${label}` }).click();
+    await setCode(page, 'x');
+    await page.keyboard.press('Backspace');
+    await page.getByRole('button', { name: label, exact: true }).click();
+    await page.keyboard.type('X');
+    await expect.poll(() => editorText(page)).toBe(snippet.replace('$0', 'X'));
   });
 });
