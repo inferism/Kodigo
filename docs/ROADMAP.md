@@ -61,7 +61,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 
 - [x] Define the guide data format
 - [x] Guide panel that shows the buttons for the current language
-- [ ] Clicking a button inserts its snippet at the cursor
+- [x] Clicking a button inserts its snippet at the cursor
 - [ ] Dropdown arrow on each button that explains the snippet
 - [ ] First Java set: `System.out.print`, variables, `Scanner`, `if`, `for`, `while`, methods, arrays
 - [ ] Beginner-friendly explanations of common compile errors
