@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
+import 'monaco-editor/editor/contrib/snippet/browser/snippetController2'; // editor.api leaves out snippets
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import { editorLanguages } from './editor-languages.js';
 import { guides } from './guide-map.js';
@@ -69,7 +70,12 @@ function showDiagnostic(error, version) {
   });
 }
 
-showGuide(document.getElementById('guide'), guides[language.id]); // not awaited: the guide never delays the editor or the runner
+// Monaco's snippet controller indents each new line like the cursor's line and moves the cursor to $0.
+const insertSnippet = (snippet) => {
+  editor.focus();
+  editor.getContribution('snippetController2')?.insert(snippet);
+};
+showGuide(document.getElementById('guide'), guides[language.id], insertSnippet); // not awaited: the guide never delays the editor or the runner
 
 const output = createOutput(document.getElementById('output'));
 document.getElementById('clear-output').onclick = output.clear;
