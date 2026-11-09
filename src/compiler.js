@@ -62,7 +62,7 @@ function showDiagnostic(error, version) {
     });
     setMarkers();
   }
-  const explanation = errorExplanations.find((e) => e.match.test(error.message))?.explanation;
+  const explanation = (guide.errors ?? []).find((e) => e.match.test(error.message))?.explanation;
   output.diagnostic({ ...error, explanation }, () => {
     const target = Math.min(error.line, model.getLineCount());
     editor.revealLineInCenter(target);
@@ -71,43 +71,27 @@ function showDiagnostic(error, version) {
   });
 }
 
-// Monaco's snippet controller indents each new line like the cursor's line and moves the cursor to $0.
-// The lines that are real imports: they start with "import " and don't begin inside a comment or a string.
-// Monaco's own tokenizer for the language tells which is which, so this names no language.
-function importLines() {
-  const model = editor.getModel();
-  const tokens = monaco.editor.tokenize(model.getValue(), model.getLanguageId());
-  return model.getLinesContent().flatMap((line, i) => {
-    const start = line.length - line.trimStart().length;
-    const type = tokens[i].findLast((token) => token.offset <= start)?.type ?? '';
-    return line.startsWith('import ', start) && !/^(comment|string)/.test(type) ? [{ row: i + 1, text: line.trim() }] : [];
-  });
-}
+// The language's guide file: its buttons, its error explanations and, if it has one, placeImports.
+// It's loaded once, long before the first click or run, and a failed load just leaves everything empty.
+let guideFile;
+const loadGuide = guides[language.id] && (() => (guideFile ??= guides[language.id]()));
+let guide = {};
+loadGuide?.().then((file) => { guide = file; }, () => {});
 
-// A button's imports go after the last existing import, or on line 1, unless the file already has the line.
+// Monaco's snippet controller indents each new line like the cursor's line and moves the cursor to $0.
+// A button's imports are added by the language's own placeImports, which says where they go, and the editor
+// applies that edit without knowing what an import is. A language without one ignores them.
 // The snippet goes in first, so the cursor stays put when the import is added above it.
-// shortcut: a wildcard like "import java.util.*;" isn't recognised, so the specific import is added too (harmless in Java).
 const insertSnippet = (snippet, imports = []) => {
   editor.focus();
   editor.getContribution('snippetController2')?.insert(snippet);
-  const found = importLines();
-  const missing = imports.filter((line) => !found.some((f) => f.text === line));
-  if (!missing.length) return;
-  const last = found.at(-1);
-  const [row, text] = last ? [last.row + 1, `${missing.join('\n')}\n`] : [1, `${missing.join('\n')}\n\n`];
+  const edit = imports.length && guide.placeImports?.(editor.getValue(), imports);
+  if (!edit) return;
   editor.pushUndoStop();
-  editor.executeEdits('kodigo-imports', [{ range: new monaco.Range(row, 1, row, 1), text }]);
+  editor.executeEdits('kodigo-imports', [{ range: new monaco.Range(edit.row, 1, edit.row, 1), text: edit.text }]);
   editor.pushUndoStop();
 };
-// The guide file is loaded once and shared by the panel and the error explanations.
-let guideFile;
-const loadGuide = guides[language.id] && (() => (guideFile ??= guides[language.id]()));
 showGuide(document.getElementById('guide'), loadGuide, insertSnippet); // not awaited: the guide never delays the editor or the runner
-
-// Plain-English text for known compile errors. It's filled in long before the first run, and a failed
-// load just leaves the list empty, so javac's own message still shows.
-let errorExplanations = [];
-loadGuide?.().then((file) => { errorExplanations = file.errors ?? []; }, () => {});
 
 const output = createOutput(document.getElementById('output'));
 document.getElementById('clear-output').onclick = output.clear;

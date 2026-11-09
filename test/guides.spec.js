@@ -1,6 +1,7 @@
 // Checks that every guide data file matches the format in docs/ARCHITECTURE.md. Runs in Node, no page needed.
 import { test, expect } from '@playwright/test';
 import { guides } from '../src/guide-map.js';
+import { placeImports } from '../src/guides/java.js';
 
 const filled = (value) => typeof value === 'string' && value.trim() !== '';
 
@@ -64,3 +65,41 @@ for (const [id, load] of Object.entries(guides)) {
     }
   });
 }
+
+// Java's placeImports reads the text like javac does, so it's tested here in Node with the awkward cases.
+const scanner = 'import java.util.Scanner;';
+const wanted = [scanner];
+const add = (row, text = `${scanner}\n`) => ({ row, text });
+
+for (const [name, source, expected] of [
+  ['no imports and no package: line 1, then a blank line', 'class A {}', add(1, `${scanner}\n\n`)],
+  ['already imported: nothing to add', `${scanner}\nclass A {}`, null],
+  ['after the last import', 'import java.util.List;\nimport java.io.File;\nclass A {}', add(3)],
+  ['after the package line, with a blank line before', 'package a.b;\n\nclass A {}', add(2, `\n${scanner}\n`)],
+  ['after the last import when there is also a package line', 'package a;\nimport java.util.List;\nclass A {}', add(3)],
+  ['an import split over two lines is one import', 'import java.util.\n    List;\nclass A {}', add(3)],
+  ['an import split over two lines can be the one wanted', 'import java.util.\n    Scanner;\nclass A {}', null],
+  ['odd spacing still matches', 'import   java.util.Scanner  ;\nclass A {}', null],
+  ['a block comment is not an import', `/*\n${scanner}\n*/\nclass A {}`, add(1, `${scanner}\n\n`)],
+  ['a commented-out other import is not a place to add one', '/*\nimport java.util.List;\n*/\nclass A {}', add(1, `${scanner}\n\n`)],
+  ['a line comment is not an import', `// ${scanner}\nclass A {}`, add(1, `${scanner}\n\n`)],
+  ['a text block is not an import', `class A { String s = """\n${scanner}\n"""; }`, add(1, `${scanner}\n\n`)],
+  ['an escaped quote inside a string does not confuse the scan', 'import java.util.List;\nclass A { String s = "a \\" b"; }', add(2)],
+  ['a wildcard import does not count as the specific one', 'import java.util.*;\nclass A {}', add(2)],
+  ['a static import is a different import', 'import static java.lang.Math.*;\nclass A {}', add(2)],
+  ['an empty file', '', add(1, `${scanner}\n\n`)],
+  ['an identifier that starts with the word import is not an import', 'class A { void m() { int importé = 1; } }', add(1, `${scanner}\n\n`)],
+  ['an identifier that ends with the word import is not an import', 'class A { void m() { int éimport = 1; } }', add(1, `${scanner}\n\n`)],
+  ['an identifier that starts with the word package is not a package line', 'class A { void m() { int packageé = 1; } }', add(1, `${scanner}\n\n`)],
+  ['two imports with a comment between them on one line are both seen', 'import java.util.List;/**/import java.io.File;\nclass A {}', add(2)],
+  ['the second import is the one wanted, after a comment', `import java.util.List;/**/${scanner}\nclass A {}`, null],
+]) {
+  test(`java placeImports: ${name}`, () => {
+    expect(placeImports(source, wanted)).toEqual(expected);
+  });
+}
+
+test('java placeImports adds only the lines that are missing, in order', () => {
+  const edit = placeImports('import java.util.List;\nclass A {}', ['import java.util.List;', scanner, 'import java.io.File;']);
+  expect(edit).toEqual({ row: 2, text: `${scanner}\nimport java.io.File;\n` });
+});

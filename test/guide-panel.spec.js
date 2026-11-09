@@ -184,3 +184,18 @@ test.describe('imports that are not real imports', () => {
     expect((await lines(page)).filter((l) => l.trim() === 'import java.util.Scanner;').length).toBe(2);
   });
 });
+
+test.describe('multi-line imports', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('a new import is added after an import split over two lines, not in the middle of it', async ({ page }) => {
+    await page.goto(url);
+    await setCode(page, 'import java.util.\n    List;\nclass A {\n    \n}');
+    await page.keyboard.press('ControlOrMeta+Home');
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    await page.getByRole('button', { name: 'Scanner', exact: true }).click();
+    const lines = async () => (await editorText(page)).split('\n').filter((l) => l.trim());
+    await expect.poll(lines).toEqual(['import java.util.', '    List;', 'import java.util.Scanner;', 'class A {', '    Scanner in = new Scanner(System.in);', '}']);
+  });
+});
