@@ -290,3 +290,63 @@ export const errors = [
       'A method was called with the wrong number or kind of values. Compare your call with the method: how many values it takes, and what type each one is.',
   },
 ];
+
+// Where a button's imports go in a Java file. It returns { row, text }, meaning "insert text at the start of
+// line row", or null when every wanted line is already imported. The editor applies it and knows nothing about Java.
+// It reads the text the way javac does, skipping comments, strings and text blocks, so an import written inside
+// one of those doesn't count, and an import split over several lines does. Imports go after the last import,
+// else after the package line, else on line 1.
+// shortcut: a comment in the middle of an import declaration isn't handled, and nor is an annotation before package.
+export function placeImports(source, imports) {
+  const squash = (text) => text.replace(/\s+/g, ''); // "import java.util. List ;" equals "import java.util.List;"
+  const have = new Set();
+  let line = 1;
+  let importEnd = 0;
+  let packageEnd = 0;
+
+  const count = (from, to) => {
+    for (let k = from; k < to; k++) if (source[k] === '\n') line++;
+  };
+  // Returns the index just after closer, or where the text ends. lineOnly stops at the end of the line.
+  const skip = (from, closer, { escapes = false, lineOnly = false } = {}) => {
+    let k = from;
+    while (k < source.length && !source.startsWith(closer, k) && !(lineOnly && source[k] === '\n')) {
+      k += escapes && source[k] === '\\' ? 2 : 1;
+    }
+    const end = source.startsWith(closer, k) ? k + closer.length : k;
+    count(from, end);
+    return end;
+  };
+
+  const word = /[\w$]+/y;
+  let i = 0;
+  while (i < source.length) {
+    const c = source[i];
+    if (source.startsWith('//', i)) i = skip(i + 2, '\n');
+    else if (source.startsWith('/*', i)) i = skip(i + 2, '*/');
+    else if (source.startsWith('"""', i)) i = skip(i + 3, '"""', { escapes: true });
+    else if (c === '"' || c === "'") i = skip(i + 1, c, { escapes: true, lineOnly: true });
+    else if (word.test(c)) {
+      word.lastIndex = i;
+      const name = word.exec(source)[0];
+      if (name === 'import' || name === 'package') {
+        const end = skip(i + name.length, ';');
+        if (name === 'import') {
+          have.add(squash(source.slice(i, end)));
+          importEnd = line;
+        } else packageEnd = line;
+        i = end;
+      } else i += name.length;
+    } else {
+      if (c === '\n') line++;
+      i++;
+    }
+  }
+
+  const missing = imports.filter((wanted) => !have.has(squash(wanted)));
+  if (!missing.length) return null;
+  const lines = missing.join('\n');
+  if (importEnd) return { row: importEnd + 1, text: `${lines}\n` };
+  if (packageEnd) return { row: packageEnd + 1, text: `\n${lines}\n` };
+  return { row: 1, text: `${lines}\n\n` };
+}
