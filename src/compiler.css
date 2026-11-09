@@ -104,6 +104,8 @@ main { flex: 1; min-height: 0; display: flex; }
   font: inherit; color: var(--accent); caret-color: var(--accent); outline: none;
 }
 
+/* Plain-English text under javac's message: normal reading text, not code. */
+#output .explain { display: block; max-width: 65ch; margin: 0.125rem 0 0.75rem; color: var(--muted); font: 0.9375rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; white-space: normal; }
 #output .diagnostic button {
   min-height: 1.75rem; padding: 0 0.5rem; font: inherit; font-size: 0.875rem; cursor: pointer;
   color: var(--text); background: none; border: 1px solid var(--line); border-radius: 0.375rem;

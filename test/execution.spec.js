@@ -321,3 +321,27 @@ System.out.println("[" + value + "][" + line + "]");
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
   await expect(output()).toContainText('[7][hello world]');
 });
+
+// Real javac messages, so a wrong match in the Java guide's errors list shows up here.
+const wrap = (members, body) => `public class Main {\n${members}\n    public static void main(String[] args) {\n${body}\n    }\n}\n`;
+const explain = () => page.locator('#output .diagnostic .explain');
+
+for (const [name, code, expected] of [
+  ['a missing semicolon', wrap('', 'int x = 5\nSystem.out.println(x);'), 'semicolon at the end of a statement'],
+  ['an unknown name', wrap('', 'System.out.println(y);'), 'Java does not know this name'],
+  ['text put into an int', wrap('', 'int n = "hi";'), 'one kind of value where another kind is expected'],
+  ['a decimal put into an int', wrap('', 'int n = 2.5;'), 'lose its decimal part'],
+  ['a method with no return', wrap('static int f() { }', ''), 'promises to give back a value'],
+]) {
+  test(`a compile error for ${name} gets a plain-English explanation`, async () => {
+    await runCode(code);
+    await expect(explain().first()).toContainText(expected, { timeout: 60_000 });
+    await expect(page.locator('#output .diagnostic').first()).toContainText('Line');
+  });
+}
+
+test('a compile error with no known explanation shows only javac\'s message', async () => {
+  await runCode(wrap('', "char c = 'ab';"));
+  await expect(page.locator('#output .diagnostic').first()).toContainText('character literal', { timeout: 60_000 });
+  await expect(page.locator('#output .diagnostic').first().locator('.explain')).toHaveCount(0); // a later error on the same line may have one
+});

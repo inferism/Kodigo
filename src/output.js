@@ -47,6 +47,7 @@ export function createOutput(box) {
         button.textContent = `Line ${error.line}`;
         button.onclick = onClick;
         row.append(button, ` ${error.message}\n`);
+        if (error.explanation) row.append(Object.assign(document.createElement('span'), { className: 'explain', textContent: error.explanation }));
         input.before(row);
         size += row.textContent.length;
         continue;

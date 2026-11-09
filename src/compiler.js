@@ -62,7 +62,8 @@ function showDiagnostic(error, version) {
     });
     setMarkers();
   }
-  output.diagnostic(error, () => {
+  const explanation = errorExplanations.find((e) => e.match.test(error.message))?.explanation;
+  output.diagnostic({ ...error, explanation }, () => {
     const target = Math.min(error.line, model.getLineCount());
     editor.revealLineInCenter(target);
     editor.setPosition({ lineNumber: target, column: 1 });
@@ -75,7 +76,15 @@ const insertSnippet = (snippet) => {
   editor.focus();
   editor.getContribution('snippetController2')?.insert(snippet);
 };
-showGuide(document.getElementById('guide'), guides[language.id], insertSnippet); // not awaited: the guide never delays the editor or the runner
+// The guide file is loaded once and shared by the panel and the error explanations.
+let guideFile;
+const loadGuide = guides[language.id] && (() => (guideFile ??= guides[language.id]()));
+showGuide(document.getElementById('guide'), loadGuide, insertSnippet); // not awaited: the guide never delays the editor or the runner
+
+// Plain-English text for known compile errors. It's filled in long before the first run, and a failed
+// load just leaves the list empty, so javac's own message still shows.
+let errorExplanations = [];
+loadGuide?.().then((file) => { errorExplanations = file.errors ?? []; }, () => {});
 
 const output = createOutput(document.getElementById('output'));
 document.getElementById('clear-output').onclick = output.clear;

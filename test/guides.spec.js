@@ -48,4 +48,16 @@ for (const [id, load] of Object.entries(guides)) {
       }
     }
   });
+
+  test(`${id} error explanations have the right shape`, async () => {
+    const errors = (await load()).errors ?? [];
+    for (const error of errors) {
+      const where = `error: ${error.example}`;
+      expect(error.match instanceof RegExp, `${where}: match is a regex`).toBe(true);
+      expect(error.match.global || error.match.sticky, `${where}: no g or y flag, which would make test() remember its place`).toBe(false);
+      expect(filled(error.explanation), `${where}: explanation`).toBe(true);
+      // Entries are tried in order, so an earlier, broader one must not swallow this example.
+      expect(errors.find((e) => e.match.test(error.example)), `${where}: first match for its own example`).toBe(error);
+    }
+  });
 }
