@@ -24,6 +24,7 @@ export async function showGuide(aside, load, insert) {
     return note("Couldn't load the guide. Refresh the page to try again.");
   }
 
+  note('Click in your code where you want it, then press a button.');
   for (const { group, buttons } of groups) {
     const section = document.createElement('section');
     const heading = Object.assign(document.createElement('h3'), { textContent: group });

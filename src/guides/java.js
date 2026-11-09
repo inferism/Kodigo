@@ -217,6 +217,13 @@ export const errors = [
       'There is code outside the class, often because an extra } earlier closed the class too soon. Check your braces.',
   },
   {
+    // javac gives this when a statement sits outside any class, such as a guide button used above the class.
+    match: /^unnamed classes are a preview feature/,
+    example: 'unnamed classes are a preview feature and are disabled by default.',
+    explanation:
+      'Java found code that is not inside a class. Statements like this belong inside a method such as main, between its { and }. If you used a guide button, click inside your code first, where you want the snippet, and then press the button.',
+  },
+  {
     match: /^variable .* might not have been initialized$/,
     example: 'variable x might not have been initialized',
     explanation: 'A variable is used before it has a value. Give it one when you create it, like int x = 0;',

@@ -7,6 +7,7 @@ const url = 'http://localhost:4174/compiler/?lang=java';
 test('shows the groups and buttons from the language guide', async ({ page }) => {
   await page.goto(url);
   const panel = page.locator('#guide');
+  await expect(panel.getByText('Click in your code where you want it')).toBeVisible();
   await expect(panel.getByRole('heading', { name: 'Loops' })).toBeVisible();
   await expect(panel.getByRole('button', { name: 'for loop', exact: true })).toBeVisible();
   await expect(page.locator('#editor')).toBeVisible();
