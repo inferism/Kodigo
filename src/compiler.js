@@ -72,17 +72,29 @@ function showDiagnostic(error, version) {
 }
 
 // Monaco's snippet controller indents each new line like the cursor's line and moves the cursor to $0.
+// The lines that are real imports: they start with "import " and don't begin inside a comment or a string.
+// Monaco's own tokenizer for the language tells which is which, so this names no language.
+function importLines() {
+  const model = editor.getModel();
+  const tokens = monaco.editor.tokenize(model.getValue(), model.getLanguageId());
+  return model.getLinesContent().flatMap((line, i) => {
+    const start = line.length - line.trimStart().length;
+    const type = tokens[i].findLast((token) => token.offset <= start)?.type ?? '';
+    return line.startsWith('import ', start) && !/^(comment|string)/.test(type) ? [{ row: i + 1, text: line.trim() }] : [];
+  });
+}
+
 // A button's imports go after the last existing import, or on line 1, unless the file already has the line.
 // The snippet goes in first, so the cursor stays put when the import is added above it.
 // shortcut: a wildcard like "import java.util.*;" isn't recognised, so the specific import is added too (harmless in Java).
 const insertSnippet = (snippet, imports = []) => {
   editor.focus();
   editor.getContribution('snippetController2')?.insert(snippet);
-  const lines = editor.getValue().split('\n');
-  const missing = imports.filter((line) => !lines.some((l) => l.trim() === line));
+  const found = importLines();
+  const missing = imports.filter((line) => !found.some((f) => f.text === line));
   if (!missing.length) return;
-  const last = lines.findLastIndex((l) => l.startsWith('import '));
-  const [row, text] = last >= 0 ? [last + 2, `${missing.join('\n')}\n`] : [1, `${missing.join('\n')}\n\n`];
+  const last = found.at(-1);
+  const [row, text] = last ? [last.row + 1, `${missing.join('\n')}\n`] : [1, `${missing.join('\n')}\n\n`];
   editor.pushUndoStop();
   editor.executeEdits('kodigo-imports', [{ range: new monaco.Range(row, 1, row, 1), text }]);
   editor.pushUndoStop();

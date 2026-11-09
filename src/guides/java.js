@@ -236,6 +236,13 @@ export const errors = [
       'Two variables have the same name in the same place. Pick a different name, or leave off the type to reuse the first one: x = 2; instead of int x = 2;',
   },
   {
+    // javac gives this when a class in the file has the same name as an import, such as a class called Scanner.
+    match: /is already defined in this compilation unit$/,
+    example: 'Scanner is already defined in this compilation unit',
+    explanation:
+      'A class in your file has the same name as something you imported, so Java cannot tell them apart. Rename your class to something else, like Main or Program.',
+  },
+  {
     match: /^unclosed string literal$/,
     example: 'unclosed string literal',
     explanation: 'A piece of text started with a quote, but the closing quote is missing on the same line. Add the closing ".',

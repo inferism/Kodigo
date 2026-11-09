@@ -152,3 +152,35 @@ test.describe('button imports', () => {
     expect((await lines(page)).filter((l) => l.startsWith('import')).length).toBe(1);
   });
 });
+
+test.describe('imports that are not real imports', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+  const scanner = 'Scanner in = new Scanner(System.in);';
+  const lines = (page) => editorText(page).then((t) => t.split('\n').filter((l) => l.trim()));
+
+  async function pressScanner(page, code, linesDown) {
+    await page.goto(url);
+    await setCode(page, code);
+    await page.keyboard.press('ControlOrMeta+Home');
+    for (let i = 0; i < linesDown; i++) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    await page.getByRole('button', { name: 'Scanner', exact: true }).click();
+  }
+
+  test('a commented-out Scanner import does not count', async ({ page }) => {
+    await pressScanner(page, '/*\nimport java.util.Scanner;\n*/\nclass A {\n    \n}', 4);
+    await expect.poll(() => lines(page)).toEqual(['import java.util.Scanner;', '/*', 'import java.util.Scanner;', '*/', 'class A {', `    ${scanner}`, '}']);
+  });
+
+  test('a commented-out other import is not used as the place to add one', async ({ page }) => {
+    await pressScanner(page, '/*\nimport java.util.List;\n*/\nclass A {\n    \n}', 4);
+    await expect.poll(() => lines(page)).toEqual(['import java.util.Scanner;', '/*', 'import java.util.List;', '*/', 'class A {', `    ${scanner}`, '}']);
+  });
+
+  test('an import line inside a text block does not count', async ({ page }) => {
+    await pressScanner(page, 'class A {\n    String s = """\n    import java.util.Scanner;\n    """;\n    void m() {\n        \n    }\n}', 5);
+    await expect.poll(async () => (await lines(page))[0]).toBe('import java.util.Scanner;');
+    // The real one, and the one in the text block.
+    expect((await lines(page)).filter((l) => l.trim() === 'import java.util.Scanner;').length).toBe(2);
+  });
+});

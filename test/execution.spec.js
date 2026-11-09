@@ -337,6 +337,7 @@ for (const [name, code, expected] of [
   ['a method with no return', wrap('static int f() { }', ''), 'promises to give back a value'],
   ['a long put into an int', wrap('', 'long big = 5;\nint n = big;'), 'too big for the smaller type'],
   ['a statement above the class', 'int x = 1;\n' + wrap('', ''), 'not inside a class'],
+  ['a class named like an import', 'import java.util.Scanner;\nclass Scanner {\n    public static void main(String[] args) { }\n}\n', 'Rename your class'],
   ['a Java method used without an object', wrap('', 'String s = java.util.Scanner.nextLine();'), 'call it on an object you made'],
 ]) {
   test(`a compile error for ${name} gets a plain-English explanation`, async () => {
