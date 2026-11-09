@@ -38,6 +38,9 @@ test('starts collapsed on a phone', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'for loop', exact: true })).toBeHidden();
 });
 
+// The for loop is the multi-line button, so it shows indenting and where the cursor lands.
+const forLoop = async () => (await guides.java()).default.flatMap((g) => g.buttons).find((b) => b.label === 'for loop');
+
 // Replaces the editor's text. Pasting avoids Monaco's auto-closing brackets, which typing triggers.
 async function setCode(page, code) {
   await page.evaluate((text) => navigator.clipboard.writeText(text), code);
@@ -51,7 +54,7 @@ test.describe('inserting a snippet', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test('a button inserts its snippet and leaves the cursor at $0', async ({ page }) => {
-    const { snippet, label } = (await guides.java()).default[0].buttons[0];
+    const { snippet, label } = await forLoop();
     await page.goto(url);
     await setCode(page, 'x');
     await page.keyboard.press('Backspace'); // pasting an empty string would change nothing
@@ -61,7 +64,7 @@ test.describe('inserting a snippet', () => {
   });
 
   test('every inserted line gets the indent of the cursor line', async ({ page }) => {
-    const { snippet, label } = (await guides.java()).default[0].buttons[0];
+    const { snippet, label } = await forLoop();
     await page.goto(url);
     await setCode(page, 'if (a) {\n    \n}');
     await page.keyboard.press('ControlOrMeta+Home');
@@ -81,7 +84,7 @@ test.describe('explanations', () => {
     const { label, explanation } = (await guides.java()).default[0].buttons[0];
     await page.goto(url);
     const before = await editorText(page);
-    const arrow = page.getByRole('button', { name: `Explain ${label}` });
+    const arrow = page.getByRole('button', { name: `Explain ${label}`, exact: true });
     const text = page.getByText(explanation, { exact: true });
 
     await expect(text).toBeHidden();
@@ -97,7 +100,7 @@ test.describe('explanations', () => {
   test('the label still inserts the snippet while the explanation is open', async ({ page }) => {
     const { snippet, label } = (await guides.java()).default[0].buttons[0];
     await page.goto(url);
-    await page.getByRole('button', { name: `Explain ${label}` }).click();
+    await page.getByRole('button', { name: `Explain ${label}`, exact: true }).click();
     await setCode(page, 'x');
     await page.keyboard.press('Backspace');
     await page.getByRole('button', { name: label, exact: true }).click();

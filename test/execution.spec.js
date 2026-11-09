@@ -1,6 +1,7 @@
 // The four execution cases from CLAUDE.md, run against the production build.
 // Needs internet: CheerpJ loads from its CDN. One page is shared, so Java loads once (Stop reloads it).
 import { test, expect } from '@playwright/test';
+import { guides } from '../src/guide-map.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -284,4 +285,39 @@ test('an infinite loop can be stopped without freezing the page, and the next ru
 
   await runCode(HELLO); // waits for Java to reload first
   await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+});
+
+// A broken snippet would teach students something wrong, so compile every Java guide button.
+// They build on each other (number, in, numbers), so they go into main in file order. The if (false)
+// keeps the program from waiting for input or looping. A snippet that starts with "static" is a method.
+test('every Java guide snippet compiles', async () => {
+  const buttons = (await guides.java()).default.flatMap((g) => g.buttons);
+  const code = (isMethod) => buttons.map((b) => b.snippet.replace('$0', '')).filter((s) => s.startsWith('static') === isMethod).join('\n');
+  await runCode(`public class Main {\n${code(true)}\npublic static void main(String[] args) {\nif (false) {\n${code(false)}\n}\n}\n}\n`);
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).not.toContainText('error');
+});
+
+// A number read followed by a line read is the classic Scanner trap, so test the real buttons with real input.
+test('the Scanner buttons read a number and then a line of text correctly', async () => {
+  const buttons = (await guides.java()).default.flatMap((g) => g.buttons);
+  const snippet = (label) => buttons.find((b) => b.label === label).snippet.replace('$0', '');
+  await runCode(`public class Main {
+    public static void main(String[] args) {
+${snippet('Scanner')}
+${snippet('read an int')}
+${snippet('read a line')}
+System.out.println("[" + value + "][" + line + "]");
+    }
+}
+`);
+  const field = page.getByRole('textbox', { name: 'Program input' });
+  await expect(status()).toHaveText('Waiting for input…', { timeout: 60_000 });
+  await field.fill('7');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Waiting for input…'); // the line read must wait for text, not take the leftover Enter
+  await field.fill('hello world');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  await expect(output()).toContainText('[7][hello world]');
 });
