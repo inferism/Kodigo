@@ -54,9 +54,10 @@ export default [
     buttons: [
       {
         label: 'Scanner',
-        snippet: 'java.util.Scanner in = new java.util.Scanner(System.in);$0',
+        snippet: 'Scanner in = new Scanner(System.in);$0',
+        imports: ['import java.util.Scanner;'],
         explanation:
-          'Makes a Scanner named "in" that reads what you type in the output panel. Use this button once, before the buttons that read. The long name java.util.Scanner means you need no import line. If you add "import java.util.Scanner;" at the very top of the file, you can write just Scanner.',
+          'Makes a Scanner named "in" that reads what you type in the output panel. Use this button once, before the buttons that read. The import line at the top of the file was added for you. Java needs it to know what a Scanner is.',
       },
       {
         label: 'read a line',

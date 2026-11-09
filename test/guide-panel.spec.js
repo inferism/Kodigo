@@ -49,7 +49,14 @@ async function setCode(page, code) {
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.press('ControlOrMeta+V');
 }
-const editorText = (page) => page.locator('.view-lines').innerText().then((t) => t.replace(/ /g, ' '));
+// Monaco doesn't keep its line elements in line order, so sort them by where they are on screen.
+const editorText = (page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.view-lines .view-line')]
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+      .map((line) => line.textContent.replace(/\s/g, ' '))
+      .join('\n'),
+  );
 
 test.describe('inserting a snippet', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
@@ -84,6 +91,7 @@ test.describe('explanations', () => {
   test('the arrow opens and closes the explanation without inserting anything', async ({ page }) => {
     const { label, explanation } = (await guides.java()).default[0].buttons[0];
     await page.goto(url);
+    await expect.poll(() => editorText(page)).toContain('public class Main'); // the editor has drawn its text
     const before = await editorText(page);
     const arrow = page.getByRole('button', { name: `Explain ${label}`, exact: true });
     const text = page.getByText(explanation, { exact: true });
@@ -107,5 +115,40 @@ test.describe('explanations', () => {
     await page.getByRole('button', { name: label, exact: true }).click();
     await page.keyboard.type('X');
     await expect.poll(() => editorText(page)).toBe(snippet.replace('$0', 'X'));
+  });
+});
+
+test.describe('button imports', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+  const scanner = 'Scanner in = new Scanner(System.in);';
+  // Blank lines are left out of the comparison, because Monaco draws them as empty elements.
+  const lines = (page) => editorText(page).then((t) => t.split('\n').filter((l) => l.trim()));
+
+  async function clickScannerInside(page, code, linesDown) {
+    await page.goto(url);
+    await setCode(page, code);
+    await page.keyboard.press('ControlOrMeta+Home');
+    for (let i = 0; i < linesDown; i++) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    await page.getByRole('button', { name: 'Scanner', exact: true }).click();
+  }
+
+  test('Scanner puts its import on line 1 and the snippet at the cursor', async ({ page }) => {
+    await clickScannerInside(page, 'class A {\n    void m() {\n        \n    }\n}', 2);
+    await expect.poll(() => lines(page)).toEqual(['import java.util.Scanner;', 'class A {', '    void m() {', `        ${scanner}`, '    }', '}']);
+  });
+
+  test('the import goes after the last existing import', async ({ page }) => {
+    await clickScannerInside(page, 'import java.util.List;\nclass A {\n    \n}', 2);
+    await expect.poll(() => lines(page)).toEqual(['import java.util.List;', 'import java.util.Scanner;', 'class A {', `    ${scanner}`, '}']);
+  });
+
+  test('the import is not added twice', async ({ page }) => {
+    await clickScannerInside(page, 'class A {\n    \n}', 1);
+    await page.getByRole('button', { name: 'Scanner', exact: true }).click();
+    // The snippet itself goes in each time, but the import only once.
+    // (both snippets land on the same line, because the cursor stays at the end of the first)
+    await expect.poll(async () => (await editorText(page)).split(scanner).length - 1).toBe(2);
+    expect((await lines(page)).filter((l) => l.startsWith('import')).length).toBe(1);
   });
 });

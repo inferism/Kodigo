@@ -42,6 +42,9 @@ for (const [id, load] of Object.entries(guides)) {
         expect(filled(button.label), `${where}: label`).toBe(true);
         expect(filled(button.snippet), `${where}: snippet`).toBe(true);
         expect(filled(button.explanation), `${where}: explanation`).toBe(true);
+        if (button.imports !== undefined) {
+          expect(Array.isArray(button.imports) && button.imports.every(filled), `${where}: imports is a list of non-empty lines`).toBe(true);
+        }
         const marks = cursorMarks(button.snippet);
         expect(marks, `${where}: a $ that isn't $0 must be written \\$`).not.toBe(-1);
         expect(marks, `${where}: at most one $0`).toBeLessThanOrEqual(1);

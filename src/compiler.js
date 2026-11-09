@@ -72,9 +72,20 @@ function showDiagnostic(error, version) {
 }
 
 // Monaco's snippet controller indents each new line like the cursor's line and moves the cursor to $0.
-const insertSnippet = (snippet) => {
+// A button's imports go after the last existing import, or on line 1, unless the file already has the line.
+// The snippet goes in first, so the cursor stays put when the import is added above it.
+// shortcut: a wildcard like "import java.util.*;" isn't recognised, so the specific import is added too (harmless in Java).
+const insertSnippet = (snippet, imports = []) => {
   editor.focus();
   editor.getContribution('snippetController2')?.insert(snippet);
+  const lines = editor.getValue().split('\n');
+  const missing = imports.filter((line) => !lines.some((l) => l.trim() === line));
+  if (!missing.length) return;
+  const last = lines.findLastIndex((l) => l.startsWith('import '));
+  const [row, text] = last >= 0 ? [last + 2, `${missing.join('\n')}\n`] : [1, `${missing.join('\n')}\n\n`];
+  editor.pushUndoStop();
+  editor.executeEdits('kodigo-imports', [{ range: new monaco.Range(row, 1, row, 1), text }]);
+  editor.pushUndoStop();
 };
 // The guide file is loaded once and shared by the panel and the error explanations.
 let guideFile;
