@@ -64,7 +64,7 @@ Work through the phases in order, and turn each checkbox into one GitHub issue. 
 - [x] Clicking a button inserts its snippet at the cursor
 - [x] Dropdown arrow on each button that explains the snippet
 - [x] First Java set: `System.out.print`, variables, `Scanner`, `if`, `for`, `while`, methods, arrays
-- [ ] Beginner-friendly explanations of common compile errors
+- [x] Beginner-friendly explanations of common compile errors
 
 ## Phase 4: More languages
 

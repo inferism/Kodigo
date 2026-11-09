@@ -151,3 +151,127 @@ in.nextLine(); // finishes the line, so a later nextLine() waits for new text$0`
     ],
   },
 ];
+
+// Plain-English explanations for javac's most common errors, shown under javac's own message.
+// The first entry whose match fits wins, so the specific ones come before the general ones.
+// example is a real javac message, and test/guides.spec.js checks that match fits it.
+export const errors = [
+  {
+    match: /^';' expected$/,
+    example: "';' expected",
+    explanation:
+      'Java wants a semicolon at the end of a statement. Look at the end of the marked line, or the line just above it, for a missing ;',
+  },
+  {
+    match: /^'\)'( or ',')? expected$/,
+    example: "')' or ',' expected",
+    explanation:
+      'A closing parenthesis is missing, or a comma between two values. Count the ( and ) on the line: every ( needs a matching ).',
+  },
+  {
+    match: /^'\{' expected$/,
+    example: "'{' expected",
+    explanation:
+      'An opening brace { is missing. Classes, methods, if statements and loops all put their code between { and }.',
+  },
+  {
+    match: /^cannot find symbol$/,
+    example: 'cannot find symbol',
+    explanation:
+      'Java does not know this name. Common causes: a typo, wrong capital letters (Java cares, so string is not String), a variable that was never created, or one created inside a different { } block. Using Scanner also needs the Scanner button or an import line.',
+  },
+  {
+    match: /^incompatible types: possible lossy conversion from (double|float) to /,
+    example: 'incompatible types: possible lossy conversion from double to int',
+    explanation:
+      'A number with decimals (double) would lose its decimal part inside an int. Use a double variable instead, or cut the decimals on purpose with a cast: (int) 2.5 gives 2.',
+  },
+  {
+    match: /^incompatible types: possible lossy conversion/,
+    example: 'incompatible types: possible lossy conversion from long to int',
+    explanation:
+      'The value could be too big for the smaller type it is going into, such as a long into an int, or an int into a byte. Use the bigger type for the variable, or shrink the value on purpose with a cast like (int) x, which can change the number if it does not fit.',
+  },
+  {
+    match: /^incompatible types: .* cannot be converted to /,
+    example: 'incompatible types: String cannot be converted to int',
+    explanation:
+      'You are putting one kind of value where another kind is expected, like text into an int. Check the type on each side. A condition in if or while must be true or false, and = sets a value while == compares two.',
+  },
+  {
+    match: /^missing return statement$/,
+    example: 'missing return statement',
+    explanation:
+      'This method promises to give back a value, but some way through it ends without a return. Make sure every path reaches a return.',
+  },
+  {
+    match: /^reached end of file while parsing$/,
+    example: 'reached end of file while parsing',
+    explanation:
+      'Java reached the end of your code while still waiting for something, usually a } that is missing. Check that every { has a matching }.',
+  },
+  {
+    match: /^class, interface, enum, or record expected$/,
+    example: 'class, interface, enum, or record expected',
+    explanation:
+      'There is code outside the class, often because an extra } earlier closed the class too soon. Check your braces.',
+  },
+  {
+    match: /^variable .* might not have been initialized$/,
+    example: 'variable x might not have been initialized',
+    explanation: 'A variable is used before it has a value. Give it one when you create it, like int x = 0;',
+  },
+  {
+    match: /^variable .* is already defined/,
+    example: 'variable x is already defined in method main(String[])',
+    explanation:
+      'Two variables have the same name in the same place. Pick a different name, or leave off the type to reuse the first one: x = 2; instead of int x = 2;',
+  },
+  {
+    match: /^unclosed string literal$/,
+    example: 'unclosed string literal',
+    explanation: 'A piece of text started with a quote, but the closing quote is missing on the same line. Add the closing ".',
+  },
+  {
+    match: /^not a statement$/,
+    example: 'not a statement',
+    explanation:
+      'This line is not an instruction Java can run, like x + 1; on its own. Keep the result (y = x + 1;), print it, or delete the line.',
+  },
+  {
+    match: /^'else' without 'if'$/,
+    example: "'else' without 'if'",
+    explanation:
+      'An else has to come right after the closing } of an if. Check for a missing }, or a ; right after the if condition.',
+  },
+  {
+    match: /^non-static method .* cannot be referenced from a static context$/,
+    example: 'non-static method hello() cannot be referenced from a static context',
+    explanation:
+      'This method belongs to an object, but it was used as if it belonged to the class, which is what main is. If it is your own method, put the word static in front of it, like main has: static void hello(). If it comes from Java, such as nextLine(), call it on an object you made: in.nextLine() and not Scanner.nextLine().',
+  },
+  {
+    match: /^unreported exception /,
+    example: 'unreported exception InterruptedException; must be caught or declared to be thrown',
+    explanation:
+      'This code can fail in a way Java makes you handle. Wrap it in try { ... } catch (Exception e) { ... }, or add throws Exception after the method name and its parentheses.',
+  },
+  {
+    match: /^bad operand types for binary operator /,
+    example: "bad operand types for binary operator '-'",
+    explanation:
+      'That operator does not work with those two kinds of value, like subtracting from text. Check what is on each side. Only + works with text, and it joins the pieces.',
+  },
+  {
+    match: /^unreachable statement$/,
+    example: 'unreachable statement',
+    explanation:
+      'Nothing can ever reach this line, because the code before it (a return, a break or an endless loop) always leaves first. Move or delete the line.',
+  },
+  {
+    match: /cannot be applied to given types/,
+    example: 'method add in class Main cannot be applied to given types;',
+    explanation:
+      'A method was called with the wrong number or kind of values. Compare your call with the method: how many values it takes, and what type each one is.',
+  },
+];

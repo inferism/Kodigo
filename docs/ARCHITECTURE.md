@@ -85,6 +85,8 @@ The panel is `src/guide-panel.js`: it draws the groups and buttons from this dat
 
 Java's file has 16 buttons in 6 groups. They are templates that fit together: `number`, `in` and `numbers` are the names that the variable, Scanner and array buttons create, and `Scanner` uses the full name `java.util.Scanner` so it needs no import. `$0` sits where removing it still compiles, so the test can compile the whole set. `read an int` also inserts `in.nextLine();`, because `nextInt()` leaves the Enter behind and a following `nextLine()` would otherwise return empty text. A snippet that starts with `static` is a method and goes in the class, outside `main`. `test/execution.spec.js` compiles every snippet in one program (inside `if (false)`, so nothing waits for input or loops).
 
+**Compile error explanations.** A guide file can also export `errors`, a list of `{ match, example, explanation }`. `match` is a regex for the message javac gives, `example` is a real message, and `explanation` is plain text. `src/compiler.js` finds the first entry whose `match` fits each error and `src/output.js` shows its explanation under javac's own message, set with `textContent` and never as HTML. No match means no extra text. Order matters, so specific entries come before general ones. `test/guides.spec.js` checks that every `match` fits its own `example` and wins for it, and `test/execution.spec.js` compiles real broken programs to check the messages. Only the first line of javac's message is matched (`cannot find symbol` has more lines after it), so explanations stay general.
+
 ## Decisions
 
 | Decision | Why |
