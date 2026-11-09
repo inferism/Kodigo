@@ -14,6 +14,10 @@ import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,11 +45,25 @@ public class KodigoRun {
 
     private static OutputStream pageStream(boolean isError) {
         return new OutputStream() {
+            private final CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+            // The first bytes of a character whose last bytes haven't been written yet, kept for the next write.
+            // A program that ends in the middle of a character drops those bytes.
+            private byte[] carry = new byte[0];
+
             @Override public void write(int b) {
                 write(new byte[] { (byte) b }, 0, 1);
             }
-            @Override public void write(byte[] b, int off, int len) {
-                KodigoRun.write(new String(b, off, len, StandardCharsets.UTF_8), isError);
+            @Override public synchronized void write(byte[] b, int off, int len) {
+                ByteBuffer in = ByteBuffer.allocate(carry.length + len);
+                in.put(carry).put(b, off, len).flip();
+                CharBuffer out = CharBuffer.allocate(in.remaining()); // a byte never makes more than one char
+                decoder.decode(in, out, false);
+                carry = new byte[in.remaining()];
+                in.get(carry);
+                out.flip();
+                if (out.hasRemaining()) KodigoRun.write(out.toString(), isError);
             }
         };
     }
