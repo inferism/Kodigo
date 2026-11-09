@@ -181,10 +181,16 @@ export const errors = [
       'Java does not know this name. Common causes: a typo, wrong capital letters (Java cares, so string is not String), a variable that was never created, or one created inside a different { } block. Using Scanner also needs the Scanner button or an import line.',
   },
   {
-    match: /^incompatible types: possible lossy conversion/,
+    match: /^incompatible types: possible lossy conversion from (double|float) to /,
     example: 'incompatible types: possible lossy conversion from double to int',
     explanation:
       'A number with decimals (double) would lose its decimal part inside an int. Use a double variable instead, or cut the decimals on purpose with a cast: (int) 2.5 gives 2.',
+  },
+  {
+    match: /^incompatible types: possible lossy conversion/,
+    example: 'incompatible types: possible lossy conversion from long to int',
+    explanation:
+      'The value could be too big for the smaller type it is going into, such as a long into an int, or an int into a byte. Use the bigger type for the variable, or shrink the value on purpose with a cast like (int) x, which can change the number if it does not fit.',
   },
   {
     match: /^incompatible types: .* cannot be converted to /,
@@ -242,7 +248,7 @@ export const errors = [
     match: /^non-static method .* cannot be referenced from a static context$/,
     example: 'non-static method hello() cannot be referenced from a static context',
     explanation:
-      'main belongs to the class itself, but this method does not. Put the word static in front of the method, like main has: static void hello()',
+      'This method belongs to an object, but it was used as if it belonged to the class, which is what main is. If it is your own method, put the word static in front of it, like main has: static void hello(). If it comes from Java, such as nextLine(), call it on an object you made: in.nextLine() and not Scanner.nextLine().',
   },
   {
     match: /^unreported exception /,

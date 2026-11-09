@@ -332,6 +332,8 @@ for (const [name, code, expected] of [
   ['text put into an int', wrap('', 'int n = "hi";'), 'one kind of value where another kind is expected'],
   ['a decimal put into an int', wrap('', 'int n = 2.5;'), 'lose its decimal part'],
   ['a method with no return', wrap('static int f() { }', ''), 'promises to give back a value'],
+  ['a long put into an int', wrap('', 'long big = 5;\nint n = big;'), 'too big for the smaller type'],
+  ['a Java method used without an object', wrap('', 'String s = java.util.Scanner.nextLine();'), 'call it on an object you made'],
 ]) {
   test(`a compile error for ${name} gets a plain-English explanation`, async () => {
     await runCode(code);
