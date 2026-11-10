@@ -1,4 +1,7 @@
 import { languages } from './languages.js';
+import { setupThemeToggle } from './theme.js';
+
+setupThemeToggle(document.getElementById('theme-toggle'));
 
 const list = document.getElementById('language-list');
 
