@@ -65,14 +65,6 @@ main { flex: 1; min-height: 0; display: flex; }
 .guide-explain { margin: 0.375rem 0 0.25rem; padding: 0 0.25rem; max-width: 65ch; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
 .guide-note { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.9375rem; }
 @media (pointer: coarse) { .guide-row button { min-height: 2.75rem; } .guide-arrow { width: 2.75rem; } }
-@media (max-width: 47.99rem) {
-  main { flex-direction: column; }
-  .guide { flex: 0 0 auto; max-height: 40%; border-left: 0; border-top: 1px solid var(--line); }
-  .guide.collapsed { flex-basis: auto; }
-  .guide.collapsed .guide-toggle { flex-direction: row; padding: 0 1rem; }
-  .guide.collapsed .guide-toggle span { writing-mode: horizontal-tb; }
-  .guide.collapsed .guide-toggle svg { transform: rotate(-90deg); }
-}
 .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; padding: 0.375rem 1rem; border-bottom: 1px solid var(--line); }
 .toolbar button {
   min-height: 2.75rem; min-width: 5rem; padding: 0 1.25rem; font: inherit; font-weight: 600; cursor: pointer;
@@ -112,3 +104,20 @@ main { flex: 1; min-height: 0; display: flex; }
 }
 #output .diagnostic button:hover { border-color: var(--accent); }
 @media (pointer: coarse) { #output .diagnostic button { min-height: 2.75rem; } }
+
+/* Phone: the guide is a bar at the bottom. Open, it becomes a drawer over the lower half of the screen,
+   and the editor stays visible above it so the student can see where a snippet lands. */
+@media (max-width: 47.99rem) {
+  main { position: relative; flex-direction: column; }
+  .toolbar progress { width: 4rem; }
+  .guide { flex: 0 0 auto; border-left: 0; border-top: 1px solid var(--line); }
+  .guide:not(.collapsed) {
+    position: absolute; inset: auto 0 0 0; z-index: 2; height: min(50%, 26rem);
+    background: var(--bg); box-shadow: 0 -0.75rem 1.5rem oklch(0 0 0 / 0.45);
+  }
+  .guide:not(.collapsed) .guide-toggle svg { transform: rotate(90deg); }
+  .guide.collapsed { flex-basis: auto; }
+  .guide.collapsed .guide-toggle { flex-direction: row; padding: 0 1rem; }
+  .guide.collapsed .guide-toggle span { writing-mode: horizontal-tb; }
+  .guide.collapsed .guide-toggle svg { transform: rotate(-90deg); }
+}

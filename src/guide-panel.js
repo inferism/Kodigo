@@ -12,6 +12,11 @@ export async function showGuide(aside, load, insert) {
     toggle.setAttribute('aria-expanded', open);
   };
   toggle.onclick = () => setOpen(toggle.getAttribute('aria-expanded') !== 'true');
+  aside.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || aside.classList.contains('collapsed')) return;
+    setOpen(false);
+    toggle.focus(); // the focused button would otherwise be hidden
+  });
   if (matchMedia('(max-width: 47.99rem)').matches) setOpen(false); // stacked under the editor on a phone
 
   const note = (text) => body.append(Object.assign(document.createElement('p'), { className: 'guide-note', textContent: text }));

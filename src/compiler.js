@@ -32,6 +32,8 @@ const editor = monaco.editor.create(document.getElementById('editor'), {
   automaticLayout: true,
   minimap: { enabled: false },
   fontSize: 15,
+  // shortcut: chosen once when the page opens, so turning a phone sideways doesn't change it. On a narrow screen long lines wrap, because sideways scrolling is hard on a phone.
+  wordWrap: matchMedia('(max-width: 47.99rem)').matches ? 'on' : 'off',
 });
 
 // Nothing is saved: reopening always shows the starter. So warn before a close or refresh would throw edits away.
