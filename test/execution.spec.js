@@ -371,3 +371,23 @@ test('multi-byte characters written byte by byte are not corrupted', async () =>
   await expect(output()).toContainText(/é\u{1F642}\s+é\u{1F642}\s+é\u{1F642}/u);
   await expect(output()).not.toContainText('�');
 });
+
+// The red marks must never point at code that has changed since javac saw it.
+test('editing the code clears the red marks but keeps the error row', async () => {
+  await runCode(MISSING_SEMICOLON);
+  await expect(page.locator('.squiggly-error').first()).toBeAttached({ timeout: 60_000 });
+  await page.locator('#editor').click();
+  await page.keyboard.type(' ');
+  await expect(page.locator('.squiggly-error')).toHaveCount(0);
+  await expect(page.locator('#output .diagnostic').first()).toContainText('Line');
+});
+
+test('an edit made while compiling stops the old errors from marking the changed code', async () => {
+  await runCode(MISSING_SEMICOLON);
+  await expect(status()).toHaveText('Running…'); // javac has not reported yet
+  await page.locator('#editor').click();
+  await page.keyboard.type(' '); // the code changes before the errors arrive
+  await expect(page.locator('#output .diagnostic').first()).toContainText('Line', { timeout: 60_000 });
+  await expect(status()).toHaveText('Finished, exit code 1');
+  await expect(page.locator('.squiggly-error')).toHaveCount(0);
+});
