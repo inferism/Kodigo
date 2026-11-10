@@ -230,11 +230,27 @@ test.describe('on a phone', () => {
     expect(await sideways(page)).toBe(false);
   });
 
-  test('a button still inserts its snippet while the drawer is open', async ({ page }) => {
+  test('a button inserts its snippet and closes the drawer', async ({ page }) => {
     await page.goto(url);
-    await page.getByRole('button', { name: 'Guide' }).click();
+    const toggle = page.getByRole('button', { name: 'Guide' });
+    await toggle.click();
     await page.getByRole('button', { name: 'System.out.println', exact: true }).click();
     await expect.poll(() => editorText(page)).toContain('System.out.println("");');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('the caret is not left behind the drawer when the cursor is near the bottom of a longer program', async ({ page }) => {
+    await page.goto(url);
+    await setCode(page, Array.from({ length: 40 }, (_, i) => `// line ${i}`).join('\n')); // the cursor ends up at the bottom
+    await page.getByRole('button', { name: 'Guide' }).click();
+    await page.getByRole('button', { name: 'System.out.println', exact: true }).click();
+    await page.keyboard.type('X'); // typing goes where the snippet left the caret
+    await expect.poll(() => editorText(page)).toContain('System.out.println("X");');
+    const caret = await page.locator('.cursors-layer .cursor').first().boundingBox();
+    const guide = await page.locator('#guide').boundingBox();
+    const editor = await page.locator('#editor').boundingBox();
+    expect(caret.y).toBeGreaterThanOrEqual(editor.y); // inside the editor
+    expect(caret.y + caret.height).toBeLessThanOrEqual(guide.y); // and above the guide bar, so it is visible
   });
 
   test('long lines wrap in the editor instead of scrolling sideways', async ({ page }) => {
