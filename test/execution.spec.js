@@ -371,3 +371,47 @@ test('multi-byte characters written byte by byte are not corrupted', async () =>
   await expect(output()).toContainText(/é\u{1F642}\s+é\u{1F642}\s+é\u{1F642}/u);
   await expect(output()).not.toContainText('�');
 });
+
+// The red marks must never point at code that has changed since javac saw it.
+test('editing the code clears the red marks but keeps the error row', async () => {
+  await runCode(MISSING_SEMICOLON);
+  await expect(page.locator('.squiggly-error').first()).toBeAttached({ timeout: 60_000 });
+  await page.locator('#editor').click();
+  await page.keyboard.type(' ');
+  await expect(page.locator('.squiggly-error')).toHaveCount(0);
+  await expect(page.locator('#output .diagnostic').first()).toContainText('Line');
+});
+
+test('an edit made while compiling stops the old errors from marking the changed code', async () => {
+  // Hold the worker's messages from javac's report onward, so the edit is certain to come first. Without this,
+  // a fast compile could report before the edit, and the edit alone would clear the marks.
+  await page.evaluate(() => {
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (...args) {
+      Worker.prototype.postMessage = post; // only for the run that is about to start
+      const deliver = this.onmessage;
+      const held = [];
+      let holding = false;
+      let released = false;
+      this.onmessage = (event) => {
+        if (!released && (holding || event.data.type === 'compiled')) {
+          holding = true;
+          held.push(event);
+        } else deliver(event);
+      };
+      window.releaseJavac = () => {
+        released = true; // from now on messages go straight through, even if javac hasn't reported yet
+        held.splice(0).forEach(deliver); // in the original order, or "done" would arrive before the errors
+      };
+      return post.apply(this, args);
+    };
+  });
+  await runCode(MISSING_SEMICOLON);
+  await page.locator('#editor').click();
+  await page.keyboard.type(' '); // the code changes before the errors arrive
+  await page.waitForFunction(() => window.releaseJavac);
+  await page.evaluate(() => window.releaseJavac());
+  await expect(page.locator('#output .diagnostic').first()).toContainText('Line', { timeout: 60_000 });
+  await expect(status()).toHaveText('Finished, exit code 1');
+  await expect(page.locator('.squiggly-error')).toHaveCount(0);
+});
