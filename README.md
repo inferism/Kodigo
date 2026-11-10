@@ -16,7 +16,6 @@ A free online compiler that comes with guides. Write code, run it in your browse
 
 ## Planned
 
-- Shareable links that keep your code in the URL, with no backend
 - A mobile layout, and light and dark themes
 - More languages after Java: JavaScript, Python and C/C++, one at a time
 
