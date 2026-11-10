@@ -1,11 +1,6 @@
+/* The colours are in theme.css. */
 :root {
-  --bg: #0b0e17; /* same colour as the home page's oklch(0.16 0.02 265) */
-  --line: oklch(0.32 0.025 265);
-  --text: oklch(0.95 0.01 265);
-  --muted: oklch(0.76 0.02 265);
-  --accent: oklch(0.83 0.15 85);
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
-  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -32,6 +27,7 @@ footer a { color: var(--text); }
 
 .brand { font: 700 1.125rem/1 var(--mono); letter-spacing: -0.04em; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
 #language-label { color: var(--muted); }
+header .theme-toggle { margin-left: auto; }
 
 main { flex: 1; min-height: 0; display: flex; }
 .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -87,7 +83,7 @@ main { flex: 1; min-height: 0; display: flex; }
 }
 .output button:hover { border-color: var(--accent); }
 #output { flex: 1; margin: 0; padding: 0 1rem 0.75rem; overflow: auto; font: 0.9375rem/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-#output .stderr { color: oklch(0.74 0.16 25); }
+#output .stderr { color: var(--error); }
 /* What the student typed, so it reads apart from the program's own output. */
 #output .stdin { color: var(--accent); }
 /* The input sits inline after the prompt, like a console: no box, just the caret. */
@@ -113,7 +109,7 @@ main { flex: 1; min-height: 0; display: flex; }
   .guide { flex: 0 0 auto; border-left: 0; border-top: 1px solid var(--line); }
   .guide:not(.collapsed) {
     position: absolute; inset: auto 0 0 0; z-index: 2; height: min(50%, 26rem);
-    background: var(--bg); box-shadow: 0 -0.75rem 1.5rem oklch(0 0 0 / 0.45);
+    background: var(--bg); box-shadow: 0 -0.75rem 1.5rem var(--shadow);
   }
   .guide:not(.collapsed) .guide-toggle svg { transform: rotate(90deg); }
   .guide.collapsed { flex-basis: auto; }

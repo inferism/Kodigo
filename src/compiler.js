@@ -7,6 +7,7 @@ import { showGuide } from './guide-panel.js';
 import { languages } from './languages.js';
 import { createOutput } from './output.js';
 import { runners } from './runner-map.js';
+import { currentTheme, setupThemeToggle } from './theme.js';
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
@@ -18,23 +19,22 @@ document.getElementById('language-label').textContent = language.label;
 
 await editorLanguages[language.id]?.(); // highlighting has to be registered before the editor is created
 
-monaco.editor.defineTheme('kodigo', {
-  base: 'vs-dark',
-  inherit: true,
-  rules: [],
-  colors: { 'editor.background': '#0b0e17' }, // matches --bg in compiler.css
-});
+// One editor theme per page theme. The background hex matches --bg in theme.css, so change both together.
+monaco.editor.defineTheme('kodigo-dark', { base: 'vs-dark', inherit: true, rules: [], colors: { 'editor.background': '#090d16' } });
+monaco.editor.defineTheme('kodigo-light', { base: 'vs', inherit: true, rules: [], colors: { 'editor.background': '#f7f8fc' } });
 
 const editor = monaco.editor.create(document.getElementById('editor'), {
   value: language.starter,
   language: language.monaco,
-  theme: 'kodigo',
+  theme: `kodigo-${currentTheme()}`,
   automaticLayout: true,
   minimap: { enabled: false },
   fontSize: 15,
   // shortcut: chosen once when the page opens, so turning a phone sideways doesn't change it. On a narrow screen long lines wrap, because sideways scrolling is hard on a phone.
   wordWrap: matchMedia('(max-width: 47.99rem)').matches ? 'on' : 'off',
 });
+
+setupThemeToggle(document.getElementById('theme-toggle'), (theme) => monaco.editor.setTheme(`kodigo-${theme}`));
 
 // Nothing is saved: reopening always shows the starter. So warn before a close or refresh would throw edits away.
 // The browser shows its own generic wording, because pages can't set the text.

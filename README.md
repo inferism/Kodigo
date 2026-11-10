@@ -11,12 +11,13 @@ A free online compiler that comes with guides. Write code, run it in your browse
 - Programs that read input with `Scanner`: type the input in the output panel, like a console
 - Guide buttons on the right of the editor that insert code, like a `for` loop or a `Scanner`, each with a dropdown arrow that explains it
 - A Stop button for programs that never finish
+- A layout for phones, where the guide is a drawer at the bottom
+- Light and dark themes: the site is dark until you press the toggle, and the choice is remembered on your device
 - A warning before you close or refresh with unsaved changes. Nothing is saved, and the editor always starts from the starter code
 - Code runs in your browser and is never sent to a server
 
 ## Planned
 
-- A mobile layout, and light and dark themes
 - More languages after Java: JavaScript, Python and C/C++, one at a time
 
 See the [roadmap](docs/ROADMAP.md) for the current plan and [architecture](docs/ARCHITECTURE.md) for how it works.
