@@ -12,7 +12,13 @@ export async function showGuide(aside, load, insert) {
     toggle.setAttribute('aria-expanded', open);
   };
   toggle.onclick = () => setOpen(toggle.getAttribute('aria-expanded') !== 'true');
-  if (matchMedia('(max-width: 47.99rem)').matches) setOpen(false); // stacked under the editor on a phone
+  aside.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || aside.classList.contains('collapsed')) return;
+    setOpen(false);
+    toggle.focus(); // the focused button would otherwise be hidden
+  });
+  const onPhone = () => matchMedia('(max-width: 47.99rem)').matches;
+  if (onPhone()) setOpen(false); // a bar at the bottom until it is opened
 
   const note = (text) => body.append(Object.assign(document.createElement('p'), { className: 'guide-note', textContent: text }));
   if (!load) return note('No guide for this language yet.');
@@ -32,7 +38,10 @@ export async function showGuide(aside, load, insert) {
     for (const { label, snippet, imports, explanation } of buttons) {
       const item = document.createElement('li');
       const row = document.createElement('div');
-      const insertButton = Object.assign(document.createElement('button'), { type: 'button', className: 'guide-insert', textContent: label, onclick: () => insert(snippet, imports) });
+      const insertButton = Object.assign(document.createElement('button'), { type: 'button', className: 'guide-insert', textContent: label, onclick: () => {
+        insert(snippet, imports);
+        if (onPhone()) setOpen(false); // the open drawer would cover the caret, so close it and let the student see the result
+      } });
       const text = Object.assign(document.createElement('p'), { id: `guide-explain-${explainCount++}`, className: 'guide-explain', hidden: true, textContent: explanation });
       const arrow = Object.assign(document.createElement('button'), { type: 'button', className: 'guide-arrow', ariaLabel: `Explain ${label}`, innerHTML: ARROW });
       arrow.setAttribute('aria-expanded', 'false');

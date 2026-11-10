@@ -199,3 +199,66 @@ test.describe('multi-line imports', () => {
     await expect.poll(lines).toEqual(['import java.util.', '    List;', 'import java.util.Scanner;', 'class A {', '    Scanner in = new Scanner(System.in);', '}']);
   });
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 800 }, permissions: ['clipboard-read', 'clipboard-write'] });
+  const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+
+  test('the guide opens as a drawer over the lower half, with the editor still visible above it', async ({ page }) => {
+    await page.goto(url);
+    const toggle = page.getByRole('button', { name: 'Guide' });
+    const bar = await page.locator('#guide').boundingBox();
+    await toggle.click();
+    await expect(page.getByRole('button', { name: 'for loop', exact: true })).toBeVisible();
+    const drawer = await page.locator('#guide').boundingBox();
+    const editor = await page.locator('#editor').boundingBox();
+    expect(drawer.y).toBeGreaterThan(800 * 0.4); // it fills only the lower part
+    expect(drawer.y + drawer.height).toBeLessThanOrEqual(800); // and stays on screen
+    expect(editor.y + 100).toBeLessThan(drawer.y); // the top of the editor is not covered
+    expect(drawer.height).toBeGreaterThan(bar.height * 3);
+    expect(await sideways(page)).toBe(false);
+  });
+
+  test('Escape closes the drawer and puts focus back on its button', async ({ page }) => {
+    await page.goto(url);
+    const toggle = page.getByRole('button', { name: 'Guide' });
+    await toggle.click();
+    await page.getByRole('button', { name: 'Explain for loop' }).focus();
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+    expect(await sideways(page)).toBe(false);
+  });
+
+  test('a button inserts its snippet and closes the drawer', async ({ page }) => {
+    await page.goto(url);
+    const toggle = page.getByRole('button', { name: 'Guide' });
+    await toggle.click();
+    await page.getByRole('button', { name: 'System.out.println', exact: true }).click();
+    await expect.poll(() => editorText(page)).toContain('System.out.println("");');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('the caret is not left behind the drawer when the cursor is near the bottom of a longer program', async ({ page }) => {
+    await page.goto(url);
+    await setCode(page, Array.from({ length: 40 }, (_, i) => `// line ${i}`).join('\n')); // the cursor ends up at the bottom
+    await page.getByRole('button', { name: 'Guide' }).click();
+    await page.getByRole('button', { name: 'System.out.println', exact: true }).click();
+    await page.keyboard.type('X'); // typing goes where the snippet left the caret
+    await expect.poll(() => editorText(page)).toContain('System.out.println("X");');
+    const caret = await page.locator('.cursors-layer .cursor').first().boundingBox();
+    const guide = await page.locator('#guide').boundingBox();
+    const editor = await page.locator('#editor').boundingBox();
+    expect(caret.y).toBeGreaterThanOrEqual(editor.y); // inside the editor
+    expect(caret.y + caret.height).toBeLessThanOrEqual(guide.y); // and above the guide bar, so it is visible
+  });
+
+  test('long lines wrap in the editor instead of scrolling sideways', async ({ page }) => {
+    await page.goto(url);
+    await setCode(page, `// ${'word '.repeat(60)}
+// end`);
+    // A wrapped line takes several rows, so the next line sits well below it.
+    const top = (text) => page.locator('.view-lines .view-line', { hasText: text }).first().evaluate((el) => el.getBoundingClientRect().top);
+    await expect.poll(async () => (await top('// end')) - (await top('word word'))).toBeGreaterThan(40);
+  });
+});
