@@ -90,7 +90,7 @@ const insertSnippet = (snippet, imports = []) => {
   const edit = imports.length && guide.placeImports?.(editor.getValue(), imports);
   if (!edit) return;
   editor.pushUndoStop();
-  editor.executeEdits('kodigo-imports', [{ range: new monaco.Range(edit.row, 1, edit.row, 1), text: edit.text }]);
+  editor.executeEdits('kodigo-imports', [{ range: new monaco.Range(edit.row, edit.column, edit.row, edit.column), text: edit.text }]);
   editor.pushUndoStop();
 };
 showGuide(document.getElementById('guide'), loadGuide, insertSnippet); // not awaited: the guide never delays the editor or the runner

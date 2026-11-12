@@ -291,21 +291,27 @@ export const errors = [
   },
 ];
 
-// Where a button's imports go in a Java file. It returns { row, text }, meaning "insert text at the start of
-// line row", or null when every wanted line is already imported. The editor applies it and knows nothing about Java.
-// It reads the text the way javac does, skipping comments, strings and text blocks, so an import written inside
-// one of those doesn't count, and an import split over several lines does. Imports go after the last import,
-// else after the package line, else on line 1.
+// Where a button's imports go in a Java file. It returns { row, column, text }, meaning "insert text at this
+// exact spot" (both start at 1), or null when every wanted line is already imported. The editor applies it and
+// knows nothing about Java. It reads the text the way javac does, skipping comments, strings and text blocks, so an
+// import written inside one of those doesn't count, and an import split over several lines does. Imports go right
+// after the last import's semicolon, else after the package line's, else at the very start. The exact column
+// matters: with "package demo; public class Main {" on one line, the next line would be inside the class.
 // shortcut: a comment in the middle of an import declaration isn't handled, and nor is an annotation before package.
 export function placeImports(source, imports) {
   const squash = (text) => text.replace(/\s+/g, ''); // "import java.util. List ;" equals "import java.util.List;"
   const have = new Set();
   let line = 1;
-  let importEnd = 0;
-  let packageEnd = 0;
+  let lineStart = 0; // the index where the current line starts, to turn an index into a column
+  let importEnd = null; // { row, column } just after the last import's semicolon
+  let packageEnd = null;
 
+  const newline = (k) => {
+    line++;
+    lineStart = k + 1;
+  };
   const count = (from, to) => {
-    for (let k = from; k < to; k++) if (source[k] === '\n') line++;
+    for (let k = from; k < to; k++) if (source[k] === '\n') newline(k);
   };
   // Returns the index just after closer, or where the text ends. lineOnly stops at the end of the line.
   const skip = (from, closer, { escapes = false, lineOnly = false } = {}) => {
@@ -332,14 +338,15 @@ export function placeImports(source, imports) {
       const name = source.slice(i, word.lastIndex);
       if (name === 'import' || name === 'package') {
         const end = skip(i + name.length, ';');
+        const here = { row: line, column: end - lineStart + 1 };
         if (name === 'import') {
           have.add(squash(source.slice(i, end)));
-          importEnd = line;
-        } else packageEnd = line;
+          importEnd = here;
+        } else packageEnd = here;
         i = end;
       } else i += name.length;
     } else {
-      if (c === '\n') line++;
+      if (c === '\n') newline(i);
       i++;
     }
   }
@@ -347,7 +354,7 @@ export function placeImports(source, imports) {
   const missing = imports.filter((wanted) => !have.has(squash(wanted)));
   if (!missing.length) return null;
   const lines = missing.join('\n');
-  if (importEnd) return { row: importEnd + 1, text: `${lines}\n` };
-  if (packageEnd) return { row: packageEnd + 1, text: `\n${lines}\n` };
-  return { row: 1, text: `${lines}\n\n` };
+  if (importEnd) return { ...importEnd, text: `\n${lines}` };
+  if (packageEnd) return { ...packageEnd, text: `\n\n${lines}` };
+  return { row: 1, column: 1, text: `${lines}\n\n` };
 }

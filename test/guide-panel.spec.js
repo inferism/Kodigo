@@ -262,3 +262,29 @@ test.describe('on a phone', () => {
     await expect.poll(async () => (await top('// end')) - (await top('word word'))).toBeGreaterThan(40);
   });
 });
+
+test.describe('a package or import on the same line as the class', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('Scanner adds its import after the package line, and the program still compiles and runs', async ({ page }) => {
+    await page.goto(url);
+    await setCode(page, 'package demo; public class Main {\n    public static void main(String[] args) {\n        \n    }\n}');
+    await page.keyboard.press('ControlOrMeta+Home');
+    for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    await page.getByRole('button', { name: 'Scanner', exact: true }).click();
+    const lines = async () => (await editorText(page)).split('\n').filter((l) => l.trim());
+    // The import must not land inside the class, which is what "the next line" used to mean here.
+    await expect.poll(lines).toEqual([
+      'package demo;',
+      'import java.util.Scanner; public class Main {',
+      '    public static void main(String[] args) {',
+      '        Scanner in = new Scanner(System.in);',
+      '    }',
+      '}',
+    ]);
+    await expect(page.locator('#run')).toBeEnabled({ timeout: 100_000 }); // Java has finished loading
+    await page.locator('#run').click();
+    await expect(page.locator('#status')).toHaveText('Finished, exit code 0', { timeout: 60_000 });
+  });
+});
