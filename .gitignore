@@ -6,3 +6,4 @@ build/
 *.log
 test-results/
 playwright-report/
+/codexreview.md
