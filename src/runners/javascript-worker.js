@@ -10,22 +10,32 @@ const realClear = clearTimeout;
 // The elapsed-time check keeps the batches flowing inside a loop that never lets a timer fire,
 // and the timer sends whatever is left over when the program goes quiet.
 let buffer = [];
+let size = 0; // characters in the buffer
 let lastFlush = 0;
 let flushQueued = false;
+const KEEP = 200_000; // the page keeps only the last 200,000 characters anyway
 
 function flush() {
   lastFlush = Date.now();
   if (!buffer.length) return;
-  // The page keeps only the last 200,000 characters anyway, so a program that prints forever sends no more than that.
-  for (const item of buffer) item.text = item.text.slice(-200_000);
+  for (const item of buffer) item.text = item.text.slice(-KEEP);
   postMessage({ type: 'print', items: buffer });
   buffer = [];
+  size = 0;
 }
 
 function write(text, isError = false) {
   const last = buffer[buffer.length - 1];
   if (last?.isError === isError) last.text += text; // one big piece is far cheaper for the page than thousands of small ones
   else buffer.push({ text, isError });
+  size += text.length;
+  // A program that prints forever must not build an endless batch, so the oldest output is dropped. Alternating
+  // stdout and stderr can't merge, so the number of pieces is capped too, not only the characters.
+  if (buffer.length > 1000) {
+    buffer = buffer.slice(-500);
+    size = buffer.reduce((total, item) => total + item.text.length, 0);
+  }
+  while (size > KEEP && buffer.length > 1) size -= buffer.shift().text.length;
   if (Date.now() - lastFlush > 50) flush();
   else if (!flushQueued) {
     flushQueued = true;
@@ -52,7 +62,6 @@ self.input = (question = '') => {
   flush();
   return new Promise((resolve) => { giveLine = resolve; postMessage({ type: 'readLine' }); });
 };
-
 // Like Node, the run only ends when the program has finished and no timer is left. setInterval never
 // finishes by itself, so that program runs until Stop.
 const live = new Set();
@@ -77,9 +86,18 @@ function fail(error, line) {
   finish(1);
 }
 
+// Decides whether the run is over, but waits a moment first. Whatever the program just did (a promise that
+// rejects, code that continues after an await, a timer it clears) needs a turn to run before "finished" is
+// true, or a broken program would be reported as a success. A line being awaited keeps the run alive too.
+let checkQueued = false;
 const check = () => {
   flush();
-  if (mainDone && !live.size) finish(0);
+  if (checkQueued) return;
+  checkQueued = true;
+  realSetTimeout(() => {
+    checkQueued = false;
+    if (mainDone && !live.size && !giveLine) finish(0);
+  }, 10);
 };
 
 for (const [name, repeats] of [['setTimeout', false], ['setInterval', true]]) {
@@ -94,7 +112,11 @@ for (const [name, repeats] of [['setTimeout', false], ['setInterval', true]]) {
     return id;
   };
 }
-self.clearTimeout = self.clearInterval = (id) => { live.delete(id); realClear(id); };
+self.clearTimeout = self.clearInterval = (id) => {
+  live.delete(id);
+  realClear(id);
+  check(); // clearing the last timer can be what ends the run
+};
 self.onunhandledrejection = (event) => { event.preventDefault(); fail(event.reason); };
 
 async function run(source) {
@@ -119,6 +141,11 @@ async function run(source) {
 
 onmessage = ({ data }) => {
   if (data.type === 'run') run(data.source);
-  else if (data.type === 'input') giveLine?.(data.line);
+  else if (data.type === 'input') {
+    const give = giveLine;
+    giveLine = null;
+    give?.(data.line);
+    check(); // the program may be finished once it has used this line
+  }
 };
 postMessage({ type: 'ready' });

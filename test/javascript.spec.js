@@ -119,3 +119,40 @@ test('a loop that prints forever can be stopped, and the page stays responsive',
   await runCode(HELLO);
   await expect(status()).toHaveText('Finished, exit code 0');
 });
+
+// Regressions found by Codex's review of PR 72.
+test('a loop that alternates stdout and stderr forever can be stopped, and the page stays responsive', async () => {
+  await runCode('console.log("flood started");\nwhile (true) { console.log("x"); console.error("y"); }\n');
+  await expect(output()).toContainText('flood started');
+  await page.waitForTimeout(1000);
+  const delay = await page.evaluate(() => new Promise((resolve) => {
+    const start = performance.now();
+    setTimeout(() => resolve(performance.now() - start), 50);
+  }));
+  expect(delay).toBeLessThan(1000);
+  await page.locator('#stop').click();
+  await expect(output()).toContainText('Stopped.');
+});
+
+test('a promise that rejects with nobody handling it ends with exit code 1', async () => {
+  await runCode('Promise.reject(new Error("failed"));\n');
+  await expect(status()).toHaveText('Finished, exit code 1');
+  await expect(output()).toContainText('Error: failed');
+});
+
+test('input can be read inside a timer callback', async () => {
+  const field = page.getByRole('textbox', { name: 'Program input' });
+  await runCode('setTimeout(async () => console.log("Hi " + await input("Name: ")), 10);\n');
+  await expect(output()).toContainText('Name:');
+  await expect(status()).toHaveText('Waiting for input…');
+  await field.fill('Ana');
+  await field.press('Enter');
+  await expect(output()).toContainText('Hi Ana');
+  await expect(status()).toHaveText('Finished, exit code 0');
+});
+
+test('clearing an interval after an await lets the run finish', async () => {
+  await runCode('const id = setInterval(async () => { await Promise.resolve(); clearInterval(id); console.log("cleared"); }, 10);\n');
+  await expect(output()).toContainText('cleared');
+  await expect(status()).toHaveText('Finished, exit code 0');
+});
