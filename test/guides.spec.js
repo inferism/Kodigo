@@ -1,6 +1,7 @@
 // Checks that every guide data file matches the format in docs/ARCHITECTURE.md. Runs in Node, no page needed.
 import { test, expect } from '@playwright/test';
 import { guides } from '../src/guide-map.js';
+import { parse } from 'acorn';
 import { placeImports } from '../src/guides/java.js';
 
 const filled = (value) => typeof value === 'string' && value.trim() !== '';
@@ -111,4 +112,12 @@ for (const [name, source, expected] of [
 test('java placeImports adds only the lines that are missing, in order', () => {
   const edit = placeImports('import java.util.List;\nclass A {}', ['import java.util.List;', scanner, 'import java.io.File;']);
   expect(edit).toEqual({ row: 1, column: 'import java.util.List;'.length + 1, text: `\n${scanner}\nimport java.io.File;` });
+});
+
+// A broken snippet would teach students something wrong, so every JavaScript button must parse. They build on each
+// other (number, numbers, answer), so they go into one program in file order, parsed with the same options as the runner.
+test('every JavaScript guide snippet parses when used together', async () => {
+  const buttons = (await guides.javascript()).default.flatMap((g) => g.buttons);
+  const program = buttons.map((b) => b.snippet.replace('$0', '')).join('\n');
+  expect(() => parse(program, { ecmaVersion: 'latest', allowAwaitOutsideFunction: true, allowReturnOutsideFunction: true })).not.toThrow();
 });
