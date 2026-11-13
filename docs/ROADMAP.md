@@ -73,7 +73,7 @@ Add one runner and one guide data file per item. The UI should not need language
 
 - [x] JavaScript, using a Web Worker
 - [x] Python, using Pyodide
-- [ ] C and C++, using a WASM toolchain (the runner is done, with clang from YoWASP; the guide buttons are next)
+- [x] C and C++, using a WASM toolchain (clang from YoWASP)
 
 ## Not planned
 

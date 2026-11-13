@@ -1,8 +1,36 @@
 // The execution cases from CLAUDE.md for C and C++, run against the production build.
 // Needs internet, because clang loads from jsDelivr (about 18 MB the first time).
 import { test, expect } from '@playwright/test';
+import { guides } from '../src/guide-map.js';
 
 test.describe.configure({ mode: 'serial' });
+
+// Every guide snippet in one program: the includes the buttons add, the function above main, the declaring groups at
+// the top of main, then everything else inside if (0), so nothing waits for input or loops.
+async function allSnippets(lang, mainLine, declaring) {
+  const groups = (await guides[lang]()).default;
+  const code = (buttons) => buttons.map((b) => b.snippet.replace('$0', ''));
+  const inGroups = (names, keep) => groups.filter((g) => names.includes(g.group) === keep).flatMap((g) => g.buttons);
+  const includes = [...new Set(groups.flatMap((g) => g.buttons).flatMap((b) => b.imports ?? []))];
+  return [
+    ...includes,
+    ...code(inGroups(['Functions'], true)),
+    mainLine,
+    ...code(inGroups(declaring, true)),
+    'if (0) {',
+    ...code(inGroups(['Functions', ...declaring], false)),
+    '}',
+    'return 0;',
+    '}',
+  ].join('\n');
+}
+
+// Each program makes a real clang error, and the guide's explanation must show under it.
+async function expectExplanation(code, expected) {
+  await runCode(code);
+  await expect(status()).toHaveText('Finished, exit code 1', { timeout: 30_000 });
+  await expect(page.locator('#output .diagnostic .explain').first()).toContainText(expected);
+}
 
 let page;
 const run = () => page.locator('#run');
@@ -102,6 +130,28 @@ test.describe('C', () => {
     await expect(status()).toHaveText('Finished, exit code 0', { timeout: 30_000 });
     await expect(output()).toContainText('read 0');
   });
+
+  test('every C guide snippet compiles when used together', async () => {
+    await runCode(await allSnippets('c', 'int main(void) {', ['Variables', 'Arrays']));
+    await expect(status()).toHaveText('Finished, exit code 0', { timeout: 30_000 });
+  });
+
+  for (const [name, code, expected] of [
+    ['a missing semicolon', 'int main(void) {\n    int x = 5\n    return x;\n}\n', 'missing its semicolon'],
+    ['a missing #include', 'int main(void) {\n    printf("hi");\n    return 0;\n}\n', 'its #include line is missing'],
+    ['a misspelled function', '#include <stdio.h>\nint main(void) {\n    prinf("hi");\n    return 0;\n}\n', 'does not know a function'],
+    ['the string type', 'int main(void) {\n    string name = "Ana";\n    return 0;\n}\n', 'C has no string type'],
+    ['text in an int', 'int main(void) {\n    int x = "five";\n    return x;\n}\n', 'Text in double quotes'],
+    ['a missing }', '#include <stdio.h>\nint main(void) {\n    if (1) {\n        printf("hi");\n    return 0;\n}\n', 'never closed'],
+    ['a missing )', '#include <stdio.h>\nint main(void) {\n    printf("hi";\n    return 0;\n}\n', 'A ( was opened'],
+    ['an unclosed string', '#include <stdio.h>\nint main(void) {\n    printf("hi);\n    return 0;\n}\n', 'Something is missing'],
+    ['an unknown name', 'int main(void) {\n    return count;\n}\n', 'never made'],
+    ['a name made twice', 'int main(void) {\n    int x = 1;\n    int x = 2;\n    return x;\n}\n', 'already made'],
+    ['too few values for a function', 'int add(int a, int b) { return a + b; }\nint main(void) {\n    return add(1);\n}\n', 'wrong number of values'],
+    ['return with no value', 'int main(void) {\n    return;\n}\n', 'give back a value'],
+  ]) {
+    test(`an error for ${name} gets a plain-English explanation`, () => expectExplanation(code, expected));
+  }
 });
 
 test.describe('C++', () => {
@@ -136,4 +186,23 @@ test.describe('C++', () => {
     await page.locator('#stop').click();
     await expect(output()).toContainText('Stopped.');
   });
+
+  test('every C++ guide snippet compiles when used together', async () => {
+    await runCode(await allSnippets('cpp', 'int main() {', ['Variables', 'Vectors']));
+    await expect(status()).toHaveText('Finished, exit code 0', { timeout: 30_000 });
+  });
+
+  for (const [name, code, expected] of [
+    ['cout without std::', '#include <iostream>\nint main() {\n    cout << "hi";\n}\n', 'write std:: before it'],
+    ['string without std::', '#include <string>\nint main() {\n    string s = "a";\n}\n', 'This type lives in the std namespace'],
+    ['try and throw', '#include <iostream>\nint main() {\n    try { throw 1; } catch (int e) { }\n}\n', "can't use exceptions"],
+    ['cout with the wrong arrows', '#include <iostream>\nint main() {\n    int x = 1;\n    std::cout >> x;\n}\n', 'arrows the wrong way'],
+    ['a number in a string', '#include <string>\nint main() {\n    std::string s = 5;\n}\n', 'wrong type'],
+    ['a misspelled member', '#include <string>\nint main() {\n    std::string s = "a";\n    return s.size2();\n}\n', 'after the dot'],
+    ['the wrong values for a function', '#include <string>\nvoid greet(std::string name) {}\nint main() {\n    greet(5);\n}\n', 'not for these values'],
+    ['a missing semicolon', '#include <iostream>\nint main() {\n    std::cout << "hi"\n}\n', 'missing its semicolon'],
+    ['an unknown name', '#include <iostream>\nint main() {\n    std::cout << total;\n}\n', 'never made'],
+  ]) {
+    test(`an error for ${name} gets a plain-English explanation`, () => expectExplanation(code, expected));
+  }
 });
