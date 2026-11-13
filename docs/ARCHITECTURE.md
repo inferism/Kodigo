@@ -11,8 +11,8 @@ Browser
 └── Runners: one per language
       ├── Java       -> CheerpJ (javac and a JVM in WebAssembly)
       ├── JavaScript -> a Web Worker (the browser runs it directly)
-      ├── Python -> Pyodide (planned)
-      └── C/C++  -> WASM toolchain (planned)
+      ├── Python     -> Pyodide (CPython in WebAssembly, in a Web Worker)
+      └── C/C++      -> WASM toolchain (planned)
 
 Vercel only serves the static files. It never sees user code.
 ```
@@ -67,6 +67,17 @@ Built 2026-11-13. `src/runners/javascript.js` is the page side and `src/runners/
 - **Tests:** `test/javascript.spec.js` runs the CLAUDE.md cases against the production build: normal output, a syntax error with its line and red mark, a runtime error with its line, `await input()`, a timer, an infinite loop, and a loop that prints forever, both ended by Stop while the page stays responsive. It needs no internet. Typing a line before the prompt isn't tested there, because JavaScript starts too fast to type earlier, and the Java test covers that shared code. `test/guides.spec.js` checks that all the JavaScript guide snippets parse together.
 - **Not done:** the compiler page footer still says "Built with CheerpJ" on the JavaScript page. Hiding it per language would need a language-specific field.
 
+## Python runner
+
+Built 2026-11-13 with Pyodide 314.0.7 (Python 3.14.2). `src/runners/python.js` is the page side and `src/runners/python-worker.js` runs the program, in a Web Worker so an infinite loop can't freeze the page. The JavaScript and Python workers share `src/runners/output-batch.js`, which sends output in batches (see the JavaScript section for why).
+
+- **Where Pyodide comes from:** the worker loads it at run time from `https://cdn.jsdelivr.net/pyodide/v314.0.7/full/`, a free CDN with no account. We don't copy or bundle any of it, so there is nothing to redistribute. Pyodide is MPL-2.0 and CPython is under the PSF licence, and neither asks for a visible credit. The first load downloads about 10 MB (a size from Pyodide's package, not measured here), and the browser caches it. In the tests, on a fast connection, the first load plus the first run took about 2 seconds. A slow connection wasn't measured, and there is no progress bar, only "Loading Python…". Pyodide's loader refuses a classic worker, so the runner starts the worker with `{ type: 'module' }`. User code never leaves the browser. Packages beyond Python's standard library aren't loaded, so `import numpy` gives a `ModuleNotFoundError`, which the guide explains.
+- **Input needs two extra headers.** Python's `input()` can't be `await`ed like the JavaScript one, because the program is ordinary blocking Python. The worker waits with `Atomics.wait` on shared memory, and the page writes the typed line into it. Browsers only allow shared memory on a "cross-origin isolated" page, which needs `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` on the page. Those headers would stop CheerpJ's files loading from its CDN, so `vercel.json` sends them only for `/compiler/?lang=python`, with a rule that matches the `lang` query. Worker files need the embedder header too, so `/assets/*` gets it. jsDelivr sends `Cross-Origin-Resource-Policy: cross-origin`, which is what lets Pyodide load on an isolated page (checked with `curl` on 2026-11-13). `vite.config.js` does the same for `npm run dev` and `vite preview`, and must stay in step with `vercel.json`. If the page isn't isolated, `load()` fails with a message that says so instead of hanging. **Not tested on Vercel:** the header rule is tested only on the local server. After deploying, open `/compiler/?lang=python` and check that `crossOriginIsolated` is `true` in the browser console, and that it's `false` on the Java page.
+- **How a run works:** the worker keeps one Pyodide loaded and gives each run its own empty namespace, so variables don't leak between runs. A small piece of Python (`PRELUDE` in the worker) compiles the program as `main.py`, so a syntax error has its own line and nothing runs, then runs it. A traceback is printed without Kodigo's own frame, and the innermost `main.py` line goes to `onDiagnostic`, so the red mark and Line button work like Java's. The message is `NameError: name 'x' is not defined`, the same text the guide's `errors` match on. `sys.exit(n)` gives exit code `n`, and an error gives 1. `input()` is replaced so its prompt is shown before waiting, and `sys.stdin.readline()` reads from the same typed lines.
+- **Stop** throws the worker away, which ends even `while True: pass` and a program waiting in `input()`. Python then loads again, about 2 seconds with a warm cache in the tests. Python's own interrupt (`KeyboardInterrupt`) would stop a loop without reloading, but it can't interrupt a program waiting in `input()`, so a reload fallback would still be needed. That's skipped for now.
+- **Not supported:** ending input with Ctrl+D (the contract has no signal for it), top-level `await`, and installing packages.
+- **Tests:** `test/python.spec.js` runs the CLAUDE.md cases against the production build: normal output, a syntax error, a runtime error, `input()`, an infinite loop and a loop printing to both streams forever (both ended by Stop with the page responsive), Stop while waiting for input, no variables leaking between runs, `sys.exit`, `time.sleep`, and a real error for each explanation in the guide. It also checks that the Python page is isolated and the Java page is not, and that every guide snippet is valid Python. It needs internet, because Pyodide comes from jsDelivr.
+
 ## Guide buttons
 
 Each language has one data file, `src/guides/<id>.js`, listing its buttons. The UI reads that file, so adding a button means adding data, not code. It's a JS file rather than JSON, so a multi-line snippet is written exactly as it looks. It exports a list of groups, each with its buttons:
@@ -115,6 +126,7 @@ Java's file has 16 buttons in 6 groups. They are templates that fit together: `n
 | Private repo for now | The owner's choice. Keep this in mind for CheerpJ's license, because a private repo can't rely on any open-source terms. |
 | Guide panel on the right of the editor | The owner's choice, so the editor keeps most of the space. On a laptop it's a fixed width of about 14 to 18rem that can collapse, not a percentage, because 10% is too narrow for labels like `System.out.print` and a dropdown arrow. On a phone it becomes a drawer at the bottom (built in Phase 2's mobile layout). |
 | Guide buttons are data | New buttons and languages need no UI changes. |
+| Headers for Python only, by query | Python's `input()` needs a cross-origin isolated page, which would break CheerpJ's CDN files on the Java page. `vercel.json` matches `?lang=python`, so Java and JavaScript are untouched. Chosen by Claude on 2026-11-13 after the owner skipped the question, and untested on Vercel until the first deploy. |
 | One runner per language | Languages can be added one at a time without touching the UI. |
 | Monaco for the editor | It's free, it's the editor behind VS Code, and it saves building an editor. |
 | Input is typed in the output panel | The owner wants it to work like a real Java console, not a separate box. Lines typed early wait until the program asks, and `test/runner.html` shows how. |

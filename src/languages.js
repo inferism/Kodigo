@@ -17,4 +17,12 @@ export const languages = [
     href: '/compiler/?lang=javascript',
     starter: 'console.log("Hello, Kodigo!");\n',
   },
+  {
+    id: 'python',
+    label: 'Python',
+    monaco: 'python',
+    blurb: 'Run Python 3.14 in your browser, with input().',
+    href: '/compiler/?lang=python',
+    starter: 'print("Hello, Kodigo!")\n',
+  },
 ];
