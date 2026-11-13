@@ -31,8 +31,33 @@ const acornNotice = {
   },
 };
 
+// Python's input() waits on shared memory, which the browser only allows on a "cross-origin isolated" page. That
+// needs two headers, and they would stop CheerpJ's CDN files loading on the Java page, so vercel.json sends them
+// only for /compiler/?lang=python. The workers' own files need the embedder header too (the page can't use a
+// worker that doesn't have it). This does the same for the dev server and for `vite preview`, which the tests use.
+// Keep it in step with vercel.json.
+const pythonIsolation = {
+  name: 'python-isolation',
+  configureServer: addIsolation,
+  configurePreviewServer: addIsolation,
+};
+
+function addIsolation(server) {
+  server.middlewares.use((request, response, next) => {
+    const url = new URL(request.url, 'http://localhost');
+    const isPage = url.pathname.endsWith('/') || url.pathname.endsWith('.html');
+    if (isPage && /^\/compiler\//.test(url.pathname) && url.searchParams.get('lang') === 'python') {
+      response.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+      response.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    } else if (!isPage) {
+      response.setHeader('Cross-Origin-Embedder-Policy', 'require-corp'); // scripts and workers
+    }
+    next();
+  });
+}
+
 export default defineConfig({
-  plugins: [monacoNotices, acornNotice],
+  plugins: [monacoNotices, acornNotice, pythonIsolation],
   build: {
     // The build strips Monaco's copyright notices, and its MIT licence requires them in what we ship. This writes them out.
     license: { fileName: 'third-party-licenses.txt' },

@@ -3,4 +3,5 @@
 export const editorLanguages = {
   java: () => import('monaco-editor/languages/definitions/java/register'),
   javascript: () => import('monaco-editor/languages/definitions/javascript/register'),
+  python: () => import('monaco-editor/languages/definitions/python/register'),
 };
