@@ -72,7 +72,7 @@ Add one runner and one guide data file per item. The UI should not need language
 **Model:** Sonnet 5.5 for JavaScript and Python. Opus 5.5 for C and C++, because the toolchain setup is harder.
 
 - [x] JavaScript, using a Web Worker
-- [ ] Python, using Pyodide
+- [x] Python, using Pyodide
 - [ ] C and C++, using a WASM toolchain (the runner is done, with clang from YoWASP; the guide buttons are next)
 
 ## Not planned

@@ -10,7 +10,8 @@ const RUNTIME_ERROR = 'console.log("before");\n\nmissingName.go();\n';
 const INPUT = 'const name = await input("Name: ");\nconst age = Number(await input("Age: "));\nconsole.log(`Hi ${name}, next year you will be ${age + 1}`);\n';
 const TIMER = 'setTimeout(() => console.log("later"), 300);\nconsole.log("now");\n';
 const LOOP = 'console.log("loop started");\nwhile (true) { }\n';
-const PRINT_FLOOD = 'console.log("flood started");\nwhile (true) { console.log("x"); }\n';
+// The marker is printed inside the loop, because the panel keeps only the newest output and a marker printed once would scroll away.
+const PRINT_FLOOD = 'while (true) { console.log("flood x"); }\n';
 
 let page;
 const run = () => page.locator('#run');
@@ -105,7 +106,7 @@ test('an infinite loop can be stopped without freezing the page, and the next ru
 
 test('a loop that prints forever can be stopped, and the page stays responsive', async () => {
   await runCode(PRINT_FLOOD);
-  await expect(output()).toContainText('flood started');
+  await expect(output()).toContainText('flood x');
   await page.waitForTimeout(1000);
   const delay = await page.evaluate(() => new Promise((resolve) => {
     const start = performance.now();
@@ -122,8 +123,8 @@ test('a loop that prints forever can be stopped, and the page stays responsive',
 
 // Regressions found by Codex's review of PR 72.
 test('a loop that alternates stdout and stderr forever can be stopped, and the page stays responsive', async () => {
-  await runCode('console.log("flood started");\nwhile (true) { console.log("x"); console.error("y"); }\n');
-  await expect(output()).toContainText('flood started');
+  await runCode('while (true) { console.log("flood x"); console.error("flood y"); }\n');
+  await expect(output()).toContainText('flood x');
   await page.waitForTimeout(1000);
   const delay = await page.evaluate(() => new Promise((resolve) => {
     const start = performance.now();

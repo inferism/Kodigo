@@ -3,4 +3,5 @@
 export const guides = {
   java: () => import('./guides/java.js'),
   javascript: () => import('./guides/javascript.js'),
+  python: () => import('./guides/python.js'),
 };
