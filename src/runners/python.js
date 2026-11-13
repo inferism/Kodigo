@@ -53,6 +53,7 @@ const handlers = {
   done: ({ exitCode }) => {
     job?.resolve({ exitCode, stopped: false });
     job = null;
+    restart(); // every run gets a clean Python, so one program can't change how the next behaves
   },
   failed: ({ message }) => fail(new Error(message)),
 };
@@ -75,6 +76,11 @@ function start() {
   worker.onerror = (event) => fail(new Error(event.message || 'Python could not start'));
   worker.onmessage = ({ data }) => handlers[data.type](data);
   worker.postMessage({ type: 'start', sharedMemory });
+}
+
+function restart() {
+  killWorker();
+  start();
 }
 
 export const pythonRunner = {
@@ -102,12 +108,10 @@ export const pythonRunner = {
     });
   },
 
-  // Throws the worker away, which ends even an infinite loop or a program waiting in input(). Python then
-  // has to load again, so the next run waits.
+  // Ends even an infinite loop or a program waiting in input(), because the whole worker is thrown away.
   stop() {
     job?.resolve(stoppedResult);
     job = null;
-    killWorker();
-    start();
+    restart();
   },
 };

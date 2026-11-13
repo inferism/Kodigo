@@ -1,6 +1,7 @@
 // Runs Python (Pyodide, which is CPython compiled to WebAssembly) inside a Web Worker, so an infinite loop
 // can never freeze the page. The page side is src/runners/python.js, which lists the messages between them.
-// The same Pyodide stays loaded for every run, and each program gets its own empty namespace.
+// The page throws this worker away after every run and starts a new one, so nothing a program did can reach the
+// next one: not variables, not a replaced sys.stdout, not a half-read line of input, not an imported module.
 import { createOutput } from './output-batch.js';
 
 // Pyodide is loaded from jsDelivr, a free CDN, so it is not part of our files. The version is pinned.
@@ -8,7 +9,8 @@ const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/';
 
 const { write, flush } = createOutput((items) => postMessage({ type: 'print', items }));
 
-// input() has to wait for the page, and a worker can only wait for another thread with Atomics.wait on shared
+// Python's own input() and sys.stdin read through Pyodide's stdin handler (setStdin below), which is this function.
+// It has to wait for the page, and a worker can only wait for another thread with Atomics.wait on shared
 // memory. The page writes the typed line into `bytes` and flips the flag in `control`. Shared memory needs
 // the page to be cross-origin isolated, which vercel.json and vite.config.js turn on for the Python page.
 let control;
@@ -24,22 +26,20 @@ self.kodigoReadLine = () => {
 // Python's side. kodigo_run compiles first, so a syntax error has its own line, then runs the program with its
 // own empty namespace. It returns JSON: [exit code, line of the error in the program or null, error message or null].
 const PRELUDE = `
-import builtins, json, sys, traceback
-from js import kodigoReadLine
-
-def _input(prompt=''):
-    sys.stdout.write(str(prompt))
-    sys.stdout.flush()
-    return kodigoReadLine()
-
-builtins.input = _input
+import json, sys, traceback
 
 def kodigo_run(source):
-    exit_code, line, message = 0, None, None
+    # Only a mistake in the program's own text is reported here. A SyntaxError raised while the program runs,
+    # such as from eval("1 +"), is an ordinary error below, so it points at the line that called eval.
     try:
         code = compile(source, 'main.py', 'exec')
-        namespace = {'__name__': '__main__'}
-        exec(code, namespace)
+    except SyntaxError as error:
+        traceback.print_exception(type(error), error, None)
+        sys.stderr.flush()
+        return json.dumps([1, error.lineno, type(error).__name__ + ': ' + str(error.msg)])
+    exit_code, line, message = 0, None, None
+    try:
+        exec(code, {'__name__': '__main__'})
     except SystemExit as error:
         if isinstance(error.code, int):
             exit_code = error.code
@@ -48,15 +48,11 @@ def kodigo_run(source):
             exit_code = 1
     except BaseException as error:
         # Without this frame, the traceback starts at the student's code instead of at this function.
-        tb = error.__traceback__.tb_next if not isinstance(error, SyntaxError) else None
+        tb = error.__traceback__.tb_next
         traceback.print_exception(type(error), error, tb)
-        if isinstance(error, SyntaxError):
-            line = error.lineno
-            message = type(error).__name__ + ': ' + str(error.msg)
-        else:
-            frames = [f for f in traceback.extract_tb(tb) if f.filename == 'main.py']
-            line = frames[-1].lineno if frames else None
-            message = type(error).__name__ + ': ' + str(error)
+        frames = [f for f in traceback.extract_tb(tb) if f.filename == 'main.py']
+        line = frames[-1].lineno if frames else None
+        message = type(error).__name__ + ': ' + str(error)
         exit_code = 1
     finally:
         sys.stdout.flush()

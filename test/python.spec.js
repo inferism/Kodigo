@@ -9,7 +9,8 @@ const SYNTAX_ERROR = 'print("marker-ran")\nx = = 5\nprint(x)\n';
 const RUNTIME_ERROR = 'print("before")\n\nprint(missing_name)\n';
 const INPUT = 'name = input("Name: ")\nage = int(input("Age: "))\nprint(f"Hi {name}, next year you will be {age + 1}")\n';
 const LOOP = 'print("loop started", flush=True)\nwhile True:\n    pass\n';
-const PRINT_FLOOD = 'print("flood started")\nwhile True:\n    print("x")\n    import sys\n    print("y", file=sys.stderr)\n';
+// The marker is printed inside the loop, because the panel keeps only the newest output and a marker printed once would scroll away.
+const PRINT_FLOOD = 'import sys\nwhile True:\n    print("flood x")\n    print("flood y", file=sys.stderr)\n';
 
 let page;
 const run = () => page.locator('#run');
@@ -133,7 +134,7 @@ test('an infinite loop can be stopped without freezing the page, and the next ru
 
 test('a loop that prints to both streams forever can be stopped, and the page stays responsive', async () => {
   await runCode(PRINT_FLOOD);
-  await expect(output()).toContainText('flood started');
+  await expect(output()).toContainText('flood x');
   await page.waitForTimeout(1000);
   const delay = await page.evaluate(() => new Promise((resolve) => {
     const start = performance.now();
@@ -191,4 +192,54 @@ test('every Python guide snippet is valid Python', async () => {
   await expect(output(), 'a snippet is not valid Python').not.toContainText('Error');
   await expect(status()).toHaveText('Finished, exit code 0');
   await expect(output()).toContainText(`all ${snippets.length} compile`);
+});
+
+// Regressions found by Codex's review of PR 73.
+test("a program that replaces sys.stdout doesn't hide the next program's output", async () => {
+  await runCode('import io, sys\nsys.stdout = io.StringIO()\nprint("hidden")\n');
+  await expect(status()).toHaveText('Finished, exit code 0');
+  await runCode('print("visible again")\n');
+  await expect(status()).toHaveText('Finished, exit code 0');
+  await expect(output()).toContainText('visible again');
+});
+
+test('a half-read line of input is not carried into the next program', async () => {
+  const field = page.getByRole('textbox', { name: 'Program input' });
+  await runCode('import sys\nprint("first " + sys.stdin.read(1))\n');
+  await expect(status()).toHaveText('Waiting for input…');
+  await field.fill('ab');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Finished, exit code 0');
+
+  await runCode('import sys\nprint("second " + sys.stdin.readline().strip())\n');
+  await expect(status()).toHaveText('Waiting for input…'); // not already satisfied by the leftover "b"
+  await field.fill('new');
+  await field.press('Enter');
+  await expect(status()).toHaveText('Finished, exit code 0');
+  await expect(output()).toContainText('second new');
+});
+
+test('input() reads from sys.stdin when a program replaces it', async () => {
+  await runCode('import io, sys\nsys.stdin = io.StringIO("hello\\n")\nprint(input())\n');
+  await expect(status()).toHaveText(/^Finished/);
+  await expect(output()).not.toContainText('Error');
+  await expect(status()).toHaveText('Finished, exit code 0'); // it never waited for typing
+  await expect(output()).toContainText('hello');
+});
+
+test("input() returns the typed line without its newline", async () => {
+  const field = page.getByRole('textbox', { name: 'Program input' });
+  await runCode('print(repr(input()))\n');
+  await expect(status()).toHaveText('Waiting for input…');
+  await field.fill('x y');
+  await field.press('Enter');
+  await expect(output()).toContainText("'x y'");
+});
+
+test('a SyntaxError raised while the program runs points at the line that caused it', async () => {
+  await runCode('print("a")\nprint("b")\nprint("c")\neval("1 +")\n');
+  await expect(status()).toHaveText('Finished, exit code 1');
+  await expect(page.locator('#output .diagnostic')).toContainText('Line 4');
+  await expect(output()).toContainText('File "main.py", line 4, in <module>');
+  await expect(output()).toContainText('a'); // the lines before it ran
 });
