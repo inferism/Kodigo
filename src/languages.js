@@ -25,4 +25,20 @@ export const languages = [
     href: '/compiler/?lang=python',
     starter: 'print("Hello, Kodigo!")\n',
   },
+  {
+    id: 'c',
+    label: 'C',
+    monaco: 'c',
+    blurb: 'Compile and run C with the real clang compiler.',
+    href: '/compiler/?lang=c',
+    starter: '#include <stdio.h>\n\nint main(void) {\n    printf("Hello, Kodigo!\\n");\n    return 0;\n}\n',
+  },
+  {
+    id: 'cpp',
+    label: 'C++',
+    monaco: 'cpp',
+    blurb: 'Compile and run C++ with the real clang compiler.',
+    href: '/compiler/?lang=cpp',
+    starter: '#include <iostream>\n\nint main() {\n    std::cout << "Hello, Kodigo!" << std::endl;\n    return 0;\n}\n',
+  },
 ];
