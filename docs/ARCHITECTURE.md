@@ -12,7 +12,7 @@ Browser
       ├── Java       -> CheerpJ (javac and a JVM in WebAssembly)
       ├── JavaScript -> a Web Worker (the browser runs it directly)
       ├── Python -> Pyodide (planned)
-      └── C/C++  -> WASM toolchain (planned)
+      └── C/C++  -> clang in WebAssembly, in a Web Worker
 
 Vercel only serves the static files. It never sees user code.
 ```
@@ -66,6 +66,22 @@ Built 2026-11-13. `src/runners/javascript.js` is the page side and `src/runners/
 - **Licence:** acorn 8.19.0 is MIT and pinned. `vite.config.js` writes its notice to `/third-party-notices-acorn.txt`, because Vite's own licence file doesn't see worker bundles.
 - **Tests:** `test/javascript.spec.js` runs the CLAUDE.md cases against the production build: normal output, a syntax error with its line and red mark, a runtime error with its line, `await input()`, a timer, an infinite loop, and a loop that prints forever, both ended by Stop while the page stays responsive. It needs no internet. Typing a line before the prompt isn't tested there, because JavaScript starts too fast to type earlier, and the Java test covers that shared code. `test/guides.spec.js` checks that all the JavaScript guide snippets parse together.
 - **Not done:** the compiler page footer still says "Built with CheerpJ" on the JavaScript page. Hiding it per language would need a language-specific field.
+
+## C and C++ runner
+
+Built 2026-11-13. `src/runners/clang.js` makes two runners, `c` and `cpp`, that differ only in the file name and flags. `src/runners/clang-worker.js` compiles with clang and runs the result, in a Web Worker so Stop can end an infinite loop.
+
+- **Toolchain:** `@yowasp/clang` 22.0.0-git20542-10, which is LLVM's clang, lld, wasi-libc and libc++ built for WebAssembly. The worker imports it from jsDelivr with the version pinned, so nothing is added to our build or our Vercel deploy. The browser downloads about 18 MB (brotli) the first time, then jsDelivr's one-year cache keeps it. Measured on 2026-11-13: about 2 s to load on a fast connection, a C program compiles in 0.1 to 0.3 s and a C++ one in 2 to 3 s, because `<iostream>` is a lot of header code. Reloading after a Stop takes about 1.7 s.
+- **Licence:** The YoWASP repo is Apache-2.0, which matches LLVM's licence (its `package.json` says ISC, but the repo's LICENSE file is Apache-2.0). We load the files from the CDN and don't ship them, like CheerpJ, so there is no notice file. Check again if we ever host the files ourselves.
+- **The worker stays between runs.** Each run makes a fresh WebAssembly instance, so nothing leaks from one program to the next, and loading clang again would cost about 1.7 s. Stop, or a failure, throws the worker away and starts a new one.
+- **Running the program:** clang builds a WASI program (`wasm32-wasip1`). The worker gives it a small set of WASI calls: output, input, the clock, random numbers and exit. A call we didn't write returns "not supported" instead of stopping the program from loading. A crash, such as reading outside memory, prints "The program crashed:" with the browser's message and exits with code 1.
+- **Input uses JSPI** (`WebAssembly.Suspending`), which lets `scanf` and `cin` wait for the page's input field without `SharedArrayBuffer`. That keeps CheerpJ working, as with JavaScript. Chrome and Edge have had it since version 137 (May 2025). On 2026-11-13, sources disagreed on whether Firefox and Safari had shipped it, and neither was tested. Where it's missing, programs still run, but reading input prints "Reading input needs Chrome or Edge for now" and the input ends. A service-worker fallback could make input work everywhere, as a later task. Chosen by the owner on 2026-11-13.
+- **stdout has no buffer.** A tiny extra file compiled with every program calls `setvbuf(stdout, NULL, _IONBF, 0)`, so `printf("Name: ")` with no newline shows before `scanf` waits. A desktop terminal flushes it before reading, but wasi-libc doesn't.
+- **Output:** A running program never lets the worker's timers run, so output can't be sent later by a timer. Each write is sent at once, up to 20 messages per 50 ms. Faster output is merged into batches of at most 200,000 characters and 1,000 pieces, like the JavaScript runner. Known limit: after a fast burst, the last 50 ms of output can wait until the program writes again or ends.
+- **Compile errors:** clang's messages go to the output panel as they are. Each `main.c:LINE:COL: error:` line becomes an `onDiagnostic`, so the Line button and the red mark work. Warnings show but don't get a Line button.
+- **No C++ exceptions:** YoWASP's libc++ is built without them, so C++ compiles with `-fno-exceptions`, otherwise even hello world fails to link. `try` and `throw` give a compile error.
+- **Tests:** `test/clang.spec.js` runs the CLAUDE.md cases in both languages against the production build: output and exit code, a compile error with its line (and the red mark in C), `scanf`, `cin` with `getline`, and Stop on an infinite loop while the page stays responsive. C also has a loop that alternates stdout and stderr forever. It needs internet for jsDelivr. The test's port can be changed with `KODIGO_TEST_PORT`. Only tested in headless Chromium.
+- **Not done yet:** guide buttons and error explanations for C and C++ (the guide panel says there's no guide yet), and the "Built with CheerpJ" footer still shows on these pages.
 
 ## Guide buttons
 
