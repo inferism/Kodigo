@@ -22,8 +22,17 @@ const monacoNotices = {
   },
 };
 
+// acorn parses JavaScript in the JavaScript runner's worker, and Vite's licence file doesn't see worker bundles.
+// Its MIT licence needs its notice in what we ship, so it gets its own file.
+const acornNotice = {
+  name: 'acorn-notice',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'third-party-notices-acorn.txt', source: read('./node_modules/acorn/LICENSE') });
+  },
+};
+
 export default defineConfig({
-  plugins: [monacoNotices],
+  plugins: [monacoNotices, acornNotice],
   build: {
     // The build strips Monaco's copyright notices, and its MIT licence requires them in what we ship. This writes them out.
     license: { fileName: 'third-party-licenses.txt' },
