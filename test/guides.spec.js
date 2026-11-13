@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 import { guides } from '../src/guide-map.js';
 import { parse } from 'acorn';
 import { placeImports } from '../src/guides/java.js';
+import { placeImports as placeIncludes } from '../src/guides/clang-shared.js';
 
 const filled = (value) => typeof value === 'string' && value.trim() !== '';
 
@@ -112,6 +113,29 @@ for (const [name, source, expected] of [
 test('java placeImports adds only the lines that are missing, in order', () => {
   const edit = placeImports('import java.util.List;\nclass A {}', ['import java.util.List;', scanner, 'import java.io.File;']);
   expect(edit).toEqual({ row: 1, column: 'import java.util.List;'.length + 1, text: `\n${scanner}\nimport java.io.File;` });
+});
+
+// C and C++ share one placeImports for #include lines: right after the last #include, else at the very top.
+const string = '#include <string.h>';
+for (const [name, source, expected] of [
+  ['no includes: the very top, then a blank line', 'int main(void) {}', { row: 1, column: 1, text: `${string}\n\n` }],
+  ['already included: nothing to add', `#include <stdio.h>\n${string}\nint main(void) {}`, null],
+  ['odd spacing still counts as included', '#  include<string.h>\nint main(void) {}', null],
+  ['after the last include', '#include <stdio.h>\n#include <stdlib.h>\nint main(void) {}', { row: 2, column: '#include <stdlib.h>'.length + 1, text: `\n${string}` }],
+  ['a quoted include counts as an include line', '#include "mine.h"\nint main(void) {}', { row: 1, column: '#include "mine.h"'.length + 1, text: `\n${string}` }],
+  ['an include inside a block comment does not count', `/*\n${string}\n*/\nint main(void) {}`, { row: 1, column: 1, text: `${string}\n\n` }],
+  ['an include after a closed block comment counts', '/* note */\n#include <stdio.h>\nint main(void) {}', { row: 2, column: '#include <stdio.h>'.length + 1, text: `\n${string}` }],
+  ['Windows line endings', '#include <stdio.h>\r\nint main(void) {}', { row: 1, column: '#include <stdio.h>'.length + 1, text: `\n${string}` }],
+  ['an empty file', '', { row: 1, column: 1, text: `${string}\n\n` }],
+]) {
+  test(`c/c++ placeImports: ${name}`, () => {
+    expect(placeIncludes(source, [string])).toEqual(expected);
+  });
+}
+
+test('c/c++ placeImports adds only the lines that are missing, in order', () => {
+  const edit = placeIncludes('#include <iostream>\nint main() {}', ['#include <iostream>', '#include <string>', '#include <vector>']);
+  expect(edit).toEqual({ row: 1, column: '#include <iostream>'.length + 1, text: '\n#include <string>\n#include <vector>' });
 });
 
 // A broken snippet would teach students something wrong, so every JavaScript button must parse. They build on each
