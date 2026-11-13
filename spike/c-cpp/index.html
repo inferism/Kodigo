@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>C/C++ spike</title>
+<select id="lang"><option value="c">C</option><option value="cpp">C++</option></select>
+<button id="run" disabled>Run</button> <button id="stop">Stop</button> <span id="status">loading</span>
+<br><textarea id="src" rows="12" cols="80"></textarea>
+<br><input id="input" placeholder="input line + Enter">
+<pre id="out"></pre>
+<pre id="log"></pre>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  let worker;
+  window.spike = { logs: [], out: '', done: null, asked: 0 };
+  function start() {
+    worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+    worker.onerror = (e) => { $('status').textContent = 'worker error: ' + e.message; };
+    worker.onmessage = ({ data }) => {
+      if (data.type === 'progress') $('status').textContent = data.percent + '%';
+      if (data.type === 'ready') { $('status').textContent = 'ready'; $('run').disabled = false; }
+      if (data.type === 'log') { spike.logs.push(data.text); $('log').textContent += data.text + '\n'; }
+      if (data.type === 'out') { spike.out += data.text; $('out').textContent += data.text; }
+      if (data.type === 'readLine') { spike.asked++; $('status').textContent = 'waiting for input'; }
+      if (data.type === 'done') { spike.done = data.exitCode; $('status').textContent = 'exit ' + data.exitCode; }
+    };
+    worker.postMessage({ type: 'load' });
+  }
+  start();
+  $('run').onclick = () => {
+    spike.out = ''; spike.done = null; spike.asked = 0; $('out').textContent = '';
+    worker.postMessage({ type: 'run', lang: $('lang').value, source: $('src').value });
+  };
+  $('stop').onclick = () => { worker.terminate(); spike.done = 'stopped'; $('run').disabled = true; start(); };
+  $('input').onkeydown = (e) => {
+    if (e.key !== 'Enter') return;
+    worker.postMessage({ type: 'input', line: e.target.value });
+    e.target.value = '';
+  };
+</script>
