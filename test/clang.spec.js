@@ -87,6 +87,21 @@ test.describe('C', () => {
     await page.locator('#stop').click();
     await expect(output()).toContainText('Stopped.');
   });
+
+  // Regressions found by Codex's review of PR 74.
+  test('a character printed one byte at a time still shows correctly', async () => {
+    await runCode('#include <stdio.h>\nint main(void) {\n    int c;\n    printf("Type: ");\n    while ((c = getchar()) != EOF && c != \'\\n\') putchar(c);\n    putchar(\'\\n\');\n    return 0;\n}\n');
+    await type('é🙂');
+    await expect(status()).toHaveText('Finished, exit code 0', { timeout: 30_000 });
+    await expect(output()).toContainText(/Type: é🙂\s+é🙂/);
+    await expect(output()).not.toContainText('\uFFFD');
+  });
+
+  test('reading 0 bytes returns at once instead of waiting for input', async () => {
+    await runCode('#include <stdio.h>\n#include <unistd.h>\nint main(void) {\n    char c;\n    printf("read %ld\\n", (long) read(0, &c, 0));\n    return 0;\n}\n');
+    await expect(status()).toHaveText('Finished, exit code 0', { timeout: 30_000 });
+    await expect(output()).toContainText('read 0');
+  });
 });
 
 test.describe('C++', () => {

@@ -12,7 +12,6 @@ const files = { c: ['clang', 'main.c', 'kodigo.c', []], cpp: ['clang++', 'main.c
 const UNBUFFER = '#include <stdio.h>\n__attribute__((constructor)) static void kodigo_unbuffer(void) { setvbuf(stdout, NULL, _IONBF, 0); }\n';
 
 const post = (type, data = {}) => postMessage({ type, ...data });
-const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let clang = null;
 let giveLine = null; // Set while the program waits for a line of input.
@@ -73,6 +72,7 @@ function flush() {
 async function compile(lang, source) {
   const [driver, file, extra, flags] = files[lang];
   let messages = '';
+  const decoder = new TextDecoder(); // a new one each compile, so no half-read bytes carry over
   const collect = (bytes) => { if (bytes) messages += decoder.decode(bytes, { stream: true }); };
   let wasm = null;
   try {
@@ -102,9 +102,16 @@ function wasi(getMemory) {
   const iovecs = (iovs, count) => Array.from({ length: count }, (_, i) => [view().getUint32(iovs + i * 8, true), view().getUint32(iovs + i * 8 + 4, true)]);
   let unread = new Uint8Array(0); // the rest of the last line typed
   const EBADF = 8;
+  // One decoder per stream that keeps unfinished bytes, because `putchar` can split a character like é across writes.
+  const decoders = { 1: new TextDecoder(), 2: new TextDecoder() };
 
   async function fdRead(fd, iovs, count, readPtr) {
     if (fd !== 0) return EBADF;
+    const buffers = iovecs(iovs, count);
+    if (buffers.every(([, len]) => len === 0)) { // asking for 0 bytes returns at once, without waiting for a line
+      view().setUint32(readPtr, 0, true);
+      return 0;
+    }
     if (!unread.length) {
       if (!canWait) {
         print('\nReading input needs Chrome or Edge for now. This browser can run C and C++, but not read input.\n', true);
@@ -116,7 +123,7 @@ function wasi(getMemory) {
       unread = encoder.encode((await new Promise((resolve) => { giveLine = resolve; })) + '\n');
     }
     let total = 0;
-    for (const [ptr, len] of iovecs(iovs, count)) {
+    for (const [ptr, len] of buffers) {
       const part = unread.subarray(0, len);
       bytes().set(part, ptr);
       unread = unread.subarray(part.length);
@@ -126,13 +133,19 @@ function wasi(getMemory) {
     return 0;
   }
 
-  return {
+  // Prints any bytes left over when the program ends, so a cut-off character shows as � instead of vanishing.
+  function finishOutput() {
+    print(decoders[1].decode(), false);
+    print(decoders[2].decode(), true);
+  }
+
+  const calls = {
     fd_read: canWait ? new WebAssembly.Suspending(fdRead) : fdRead,
     fd_write(fd, iovs, count, writtenPtr) {
       if (fd !== 1 && fd !== 2) return EBADF;
       let total = 0;
       for (const [ptr, len] of iovecs(iovs, count)) {
-        print(decoder.decode(bytes().subarray(ptr, ptr + len)), fd === 2);
+        print(decoders[fd].decode(bytes().subarray(ptr, ptr + len), { stream: true }), fd === 2);
         total += len;
       }
       view().setUint32(writtenPtr, total, true);
@@ -165,11 +178,12 @@ function wasi(getMemory) {
     proc_exit(code) { throw new Exit(code); },
     sched_yield: () => 0,
   };
+  return { calls, finishOutput };
 }
 
 async function execute(wasm) {
   let memory;
-  const calls = wasi(() => memory);
+  const { calls, finishOutput } = wasi(() => memory);
   // A call we didn't write fails with ENOSYS (52) instead of stopping the program from loading.
   const imports = new Proxy(calls, { get: (target, name) => target[name] ?? (() => 52) });
   const { instance } = await WebAssembly.instantiate(wasm, { wasi_snapshot_preview1: imports });
@@ -183,6 +197,8 @@ async function execute(wasm) {
     // A trap, such as dividing by zero or reading outside memory. The browser's message is the best we have.
     print(`\nThe program crashed: ${error.message}\n`, true);
     return 1;
+  } finally {
+    finishOutput();
   }
 }
 
